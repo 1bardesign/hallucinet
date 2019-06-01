@@ -91,7 +91,11 @@ function ui_base:layout()
 	local y = self.padding.v * before
 
 	for i, v in ipairs(self.children) do
-		if v.position == "relative" then
+		--todo: skip invisible elements?
+		if v.position == "absolute" then
+			--just layout child + its children (doesn't affect out layout)
+			v:layout()
+		else
 			--position child
 			v.x = x
 			v.y = y
@@ -106,9 +110,6 @@ function ui_base:layout()
 				self.h = math.max(self.h, self.padding.v * ba_total + v.h)
 				x = x + v.w + self.padding.h * pad_amount
 			end
-		else
-			--just layout child + its children (doesn't affect out layout)
-			v:layout()
 		end
 	end
 
@@ -183,6 +184,7 @@ function ui_base:set_visible(name, v)
 		error("attempt to set bogus visibility "..name)
 	end
 	self.visible[name] = v
+	self:dirty()
 	return self
 end
 
@@ -275,10 +277,15 @@ function ui_base:pointer(event, x, y)
 
 	self.is_hovered = false
 
+	--todo: consider if we want to support overlapping children?
+	local clipped = false
 	for i,v in ipairs(self.children) do
 		if v:pointer(event, x, y) then
-			return true
+			clipped = true
 		end
+	end
+	if clipped then
+		return true
 	end
 
 	if not self.noclip then
@@ -398,7 +405,7 @@ local ui_button = ui_base:new():_set_leaf_type()
 ui.button = ui_button
 ui_button._mt = {__index = ui_button}
 
-function ui_button:new(asset, w, h)
+function ui_button:new(asset, w, h, callback)
 	self = setmetatable(ui_base:new(), ui_button._mt)
 
 	if asset then
@@ -411,6 +418,8 @@ function ui_button:new(asset, w, h)
 	self.w, self.h = w, h
 
 	self.col.bg_hover = {0, 0, 0, 0.5}
+
+	self.onclick = callback
 
 	return self
 end

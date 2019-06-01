@@ -4,40 +4,78 @@ local ui = require("ui")
 
 --startup
 local g_ui
-local side_tray
-local popup
+local centre_elements
+local popups
 function love.load()
 	init_hallucinet()
 
 	local font = love.graphics.getFont()
 
-	local y = love.graphics.getHeight() * 0.5
-	side_tray = ui.tray:new(0, y, 84, 84)
-		:add_child(ui.button:new(nil, 64, 64))
-		:add_child(ui.button:new(nil, 64, 64))
-		:add_child(ui.button:new(nil, 64, 64))
-		:add_child(ui.button:new(nil, 64, 64))
-	side_tray.anchor.v = "center"
+	--build ui
+	g_ui = ui.container:new()
 
-	popup = ui.tray:new(94, y, 84, 84)
+	centre_elements = {}
+	popups = {}
+
+	--create sub-trays for use in callbacks
+	local function clear_popup()
+		for i,v in ipairs(popups) do
+			v:remove()
+		end
+	end
+
+	local y = love.graphics.getHeight() * 0.5
+
+	local first_menu = ui.tray:new(94, y, 84, 84)
 		:add_child(ui.row:new(false)
 			:add_child(ui.button:new(nil, 64, 64))
 			:add_child(ui.button:new(nil, 64, 64))
 		)
-	popup.anchor.v = "center"
+	table.insert(centre_elements, first_menu)
+	table.insert(popups, first_menu)
 
-	--collect to container
-	g_ui = ui.container:new()
-	for i,v in ipairs({
-		side_tray, popup,
-	}) do
-		g_ui:add_child(v)
+	local second_menu = ui.tray:new(94, y, 84, 84)
+		:add_child(ui.row:new(false)
+			:add_child(ui.button:new(nil, 64, 64))
+			:add_child(ui.button:new(nil, 64, 64))
+		)
+		:add_child(ui.row:new(false)
+			:add_child(ui.button:new(nil, 64, 64))
+			:add_child(ui.button:new(nil, 64, 64))
+			:add_child(ui.button:new(nil, 64, 64))
+		)
+	table.insert(centre_elements, second_menu)
+	table.insert(popups, second_menu)
+
+	--create main side tray
+	local side_tray = ui.tray:new(0, y, 84, 84)
+		:add_child(ui.button:new(nil, 64, 64, function()
+			clear_popup()
+		end))
+		:add_child(ui.button:new(nil, 64, 64, function()
+			clear_popup()
+			g_ui:add_child(first_menu)
+		end))
+		:add_child(ui.button:new(nil, 64, 64, function()
+			clear_popup()
+			g_ui:add_child(second_menu)
+		end))
+		:add_child(ui.button:new(nil, 64, 64, function()
+			love.event.quit()
+		end))
+	side_tray.anchor.v = "center"
+
+	for i,v in ipairs(centre_elements) do
+		v.anchor.v = "center"
 	end
+
+	g_ui:add_child(side_tray)
 end
 
 function love.resize(w, h)
-	side_tray.y = h * 0.5
-	popup.y = h * 0.5
+	for i,v in ipairs(centre_elements) do
+		v.y = h * 0.5
+	end
 end
 
 --buttons

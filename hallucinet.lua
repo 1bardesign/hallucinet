@@ -229,6 +229,7 @@ end
 
 function update_hallucinet(t)
 	if done then
+		love.timer.sleep(t)
 		return
 	end
 
@@ -380,11 +381,6 @@ function draw_hallucinet(t)
 				10 + (i - 1) * 20
 			)
 		end
-	end
-
-	if done then
-		--give the cpu/gpu a rest
-		love.timer.sleep(1 / (fps * 2))
 	end
 end
 
