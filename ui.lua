@@ -35,7 +35,7 @@ function ui_base:new()
 			fg = {1, 1, 1, 1},
 			fg_hover = {1, 1, 1, 1},
 			bg = {0, 0, 0, 0.25},
-			bg_hover = {0, 0, 0, 0.5},
+			bg_hover = {0, 0, 0, 0.25},
 		},
 		visible = {
 			fg = true,
@@ -50,7 +50,12 @@ function ui_base:new()
 			between = 1.0,
 			after = 1.0,
 		},
+		anchor = {
+			h = "left",
+			v = "top",
+		},
 		layout_direction = "v",
+		noclip = false,
 		is_hovered = false,
 		is_dirty = true,
 	}, ui_base._mt)
@@ -77,12 +82,13 @@ function ui_base:layout()
 	local before = self.padding.before
 	local after = self.padding.after
 	local ba_total = before + after
+
 	self.w = self.padding.h * ba_total
 	self.h = self.padding.v * ba_total
 
 	--start of positioning
-	local x = self.x + self.padding.h * before
-	local y = self.y + self.padding.v * before
+	local x = self.padding.h * before
+	local y = self.padding.v * before
 
 	for i, v in ipairs(self.children) do
 		if v.position == "relative" then
@@ -107,9 +113,9 @@ function ui_base:layout()
 	end
 
 	if self.layout_direction == "v" then
-		self.h = y - self.y
+		self.h = y
 	elseif self.layout_direction == "h" then
-		self.w = x - self.x
+		self.w = x
 	end
 
 	return self
@@ -120,6 +126,7 @@ function ui_base:add_child(c)
 	c:remove()
 	table.insert(self.children, c)
 	c.parent = self
+	--(relayout handled by remove call)
 	return self
 end
 
@@ -130,6 +137,7 @@ function ui_base:remove_child(c)
 			break
 		end
 	end
+	self:dirty()
 	return self
 end
 
@@ -137,13 +145,16 @@ function ui_base:clear_children()
 	while #self.children > 0 do
 		self.children[1]:remove()
 	end
+	return self
 end
 
 function ui_base:remove()
 	if self.parent then
 		self.parent:remove_child(self)
 		self.parent = nil
+		self:dirty()
 	end
+	return self
 end
 
 --chainable modifiers
@@ -177,7 +188,7 @@ end
 
 --drawing
 function ui_base:draw_background()
-	love.graphics.rectangle("fill", self.x, self.y, self.w, self.h)
+	love.graphics.rectangle("fill", 0, 0, self.w, self.h)
 end
 
 function ui_base:draw_children()
@@ -186,12 +197,55 @@ function ui_base:draw_children()
 	end
 end
 
+function ui_base:pos()
+	--todo: cache this?
+	local x, y = self.x, self.y
+	local ah, av = self.anchor.h, self.anchor.v
+	
+	if ah == "left" then
+		--no change
+	elseif ah == "center" or "centre" then
+		x = x - self.w * 0.5
+	elseif ah == "right" then
+		x = x - self.w
+	end
+
+	if av == "top" then
+		--no change
+	elseif av == "center" or "centre" then
+		x = x - self.h * 0.5
+	elseif av == "bottom" then
+		x = x - self.h
+	end
+
+	return x, y
+end
+
+function ui_base:pos_absolute()
+	local px, py = 0, 0
+	if 
+		self.position ~= "absolute"
+		and self.parent
+	then
+		px, py = self.parent:pos_absolute()
+	end
+	return px + self.x, py + self.y
+end
+
 function ui_base:base_draw(inner)
+	love.graphics.push()
+	--set up position
+	if self.position == "absolute" then
+		love.graphics.origin()
+	end
+	love.graphics.translate(self:pos())
+	--draw bg
 	if self.visible.bg then
 		local r, g, b, a = unpack(self.is_hovered and self.col.bg_hover or self.col.bg)
 		love.graphics.setColor(r, g, b, a)
 		self:draw_background()
 	end
+	--draw fg
 	if self.visible.fg then
 		local r, g, b, a = unpack(self.is_hovered and self.col.fg_hover or self.col.fg)
 		love.graphics.setColor(r, g, b, a)
@@ -199,9 +253,12 @@ function ui_base:base_draw(inner)
 			inner(self)
 		end
 	end
+	--draw children
 	if self.visible.children then
 		self:draw_children()
 	end
+	--restore state
+	love.graphics.pop()
 	love.graphics.setColor(1,1,1,1)
 end
 
@@ -210,23 +267,38 @@ function ui_base:draw(inner)
 end
 
 --inputs
-function ui_base:pointer(is_click, x, y)
-	local dx = x - self.x
-	local dy = y - self.y
+function ui_base:pointer(event, x, y)
+	local px, py = self:pos_absolute()
+	local dx = x - px
+	local dy = y - py
 
-	self.is_hovered =
-		dx >= 0 and dx < self.w
-		and dy >= 0 and dy < self.h
+	self.is_hovered = false
 
-	if is_click and is_hovered then
-		if self.onclick then
-			self:onclick(x, y)
+	for i,v in ipairs(self.children) do
+		if v:pointer(event, x, y) then
+			return true
 		end
 	end
 
-	for i,v in ipairs(self.children) do
-		v:pointer(is_click, x, y)
+	if not self.noclip then
+		self.is_hovered =
+			dx >= 0 and dx < self.w
+			and dy >= 0 and dy < self.h
 	end
+
+	if self.is_hovered then
+		if event == "click" and self.onclick then
+			self:onclick(x, y)
+		end
+		if event == "drag" and self.ondrag then
+			self:ondrag(x, y)
+		end
+		if event == "release" and self.onrelease then
+			self:onrelease(x, y)
+		end
+	end
+
+	return self.is_hovered
 end
 
 --nop function to dummy out functions with
@@ -246,10 +318,24 @@ function ui_base:_set_leaf_type()
 	for i,v in ipairs(_leaf_nops) do
 		self[v] = ui_base.nop
 	end
+	self.is_leaf = true
 	return self
 end
 
---tray
+--dummy container for linking everything together
+local ui_container = ui_base:new()
+ui.container = ui_container
+ui_container._mt = {__index = ui_container}
+
+function ui_container:new()
+	self = setmetatable(ui_base:new(), ui_container._mt)
+	self.visible.bg = false
+	self.visible.fg = false
+	self.noclip = true
+	return self
+end
+
+--tray for holding buttons etc
 local ui_tray = ui_base:new()
 ui.tray = ui_tray
 ui_tray._mt = {__index = ui_tray}
@@ -286,6 +372,7 @@ function ui_row:new(v)
 	self.padding.before = 0
 	self.padding.after = 0
 	self.visible.bg = v
+	self.noclip = true
 	return self
 end
 
@@ -301,6 +388,7 @@ function ui_col:new(v)
 	self.padding.after = 0
 	self.layout_direction = "v"
 	self.visible.bg = v
+	self.noclip = true
 	return self
 end
 
@@ -321,6 +409,8 @@ function ui_button:new(asset, w, h)
 	end
 	self.w, self.h = w, h
 
+	self.col.bg_hover = {0, 0, 0, 0.5}
+
 	return self
 end
 
@@ -329,8 +419,8 @@ function ui_button:_draw()
 	if self.ui_button_asset then
 		love.graphics.draw(
 			self.ui_button_asset,
-			math.floor(self.x + self.w * 0.5),
-			math.floor(self.y + self.h * 0.5),
+			math.floor(self.w * 0.5),
+			math.floor(self.h * 0.5),
 			0,
 			math.floor(self.aw * 0.5),
 			math.floor(self.ah * 0.5)
@@ -372,8 +462,8 @@ end
 function ui_text:_draw()
 	love.graphics.draw(
 		self.ui_text,
-		self.x + self.padding.h * self.padding.before,
-		self.y + self.padding.v * self.padding.before
+		self.padding.h * self.padding.before,
+		self.padding.v * self.padding.before
 	)
 end
 

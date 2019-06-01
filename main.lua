@@ -3,38 +3,37 @@ require("hallucinet")
 local ui = require("ui")
 
 --startup
-local overlay_ui
+local g_ui
+local side_tray
+local popup
 function love.load()
 	init_hallucinet()
 
 	local font = love.graphics.getFont()
 
-	overlay_ui = ui.base:new()
-		:add_child(
-			ui.tray:new(10, 10, 200, 100)
-				-- :add_child(ui.text:new(font, "little text", 100, "center"))
-				:add_child(ui.row:new(false)
-					:add_child(ui.col:new(false)
-						:add_child(ui.button:new(nil, 50, 50))
-						:add_child(ui.button:new(nil, 50, 50))
-					):add_child(ui.col:new(false)
-						:add_child(ui.button:new(nil, 50, 50))
-						:add_child(ui.row:new(false)
-							:add_child(ui.button:new(nil, 50, 50))
-							:add_child(ui.button:new(nil, 50, 50))
-						)
-						:add_child(ui.button:new(nil, 50, 50))
-					):add_child(ui.col:new(false)
-						:add_child(ui.button:new(nil, 50, 50))
-						:add_child(ui.button:new(nil, 50, 50))
-					)
-				)
-				:add_child(ui.text:new(font, "the grid above is currently made of explicit nested rows and columns, but it might be enough for my needs", 200, "center"))
-		):add_child(
-			ui.tray:new(400, 10, 100, 10)
-				:add_child(ui.text:new(font, "another separate tray", 100, "center"))
+	side_tray = ui.tray:new(0, 0, 84, love.graphics.getHeight())
+		:add_child(ui.button:new(nil, 64, 64))
+		:add_child(ui.button:new(nil, 64, 64))
+		:add_child(ui.button:new(nil, 64, 64))
+		:add_child(ui.button:new(nil, 64, 64))
+
+	popup = ui.tray:new(94, 10, 84, 84)
+		:add_child(ui.row:new(false)
+			:add_child(ui.button:new(nil, 64, 64))
+			:add_child(ui.button:new(nil, 64, 64))
 		)
-	overlay_ui.visible.bg = false
+
+	--collect to container
+	g_ui = ui.container:new()
+	for i,v in ipairs({
+		side_tray, popup, 
+	}) do
+		g_ui:add_child(v)
+	end
+end
+
+function love.resize(w, h)
+	side_tray.h = h
 end
 
 --buttons
@@ -60,12 +59,23 @@ function love.keypressed(key, scan)
 	end
 end
 
+local is_clicked = false
 function love.mousemoved( x, y, dx, dy, istouch )
-	overlay_ui:pointer(false, x, y)
+	g_ui:pointer(is_clicked and "drag" or "move", x, y)
 end
 
 function love.mousepressed( x, y, button, istouch, presses )
-	overlay_ui:pointer(true, x, y)
+	if button == 1 then
+		g_ui:pointer("click", x, y)
+		is_clicked = true
+	end
+end
+
+function love.mousereleased( x, y, button, istouch, presses )
+	if button == 1 then
+		g_ui:pointer("release", x, y)
+		is_clicked = false
+	end
 end
 
 --update state
@@ -76,5 +86,5 @@ end
 function love.draw()
 	love.graphics.clear(0.5,0.5,0.5,0)
 	draw_hallucinet(love.timer.getTime())
-	overlay_ui:layout():draw()
+	g_ui:layout():draw()
 end
