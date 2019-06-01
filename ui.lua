@@ -201,7 +201,7 @@ function ui_base:pos()
 	--todo: cache this?
 	local x, y = self.x, self.y
 	local ah, av = self.anchor.h, self.anchor.v
-	
+
 	if ah == "left" then
 		--no change
 	elseif ah == "center" or "centre" then
@@ -213,9 +213,9 @@ function ui_base:pos()
 	if av == "top" then
 		--no change
 	elseif av == "center" or "centre" then
-		x = x - self.h * 0.5
+		y = y - self.h * 0.5
 	elseif av == "bottom" then
-		x = x - self.h
+		y = y - self.h
 	end
 
 	return x, y
@@ -223,13 +223,14 @@ end
 
 function ui_base:pos_absolute()
 	local px, py = 0, 0
-	if 
+	if
 		self.position ~= "absolute"
 		and self.parent
 	then
 		px, py = self.parent:pos_absolute()
 	end
-	return px + self.x, py + self.y
+	local sx, sy = self:pos()
+	return px + sx, py + sy
 end
 
 function ui_base:base_draw(inner)

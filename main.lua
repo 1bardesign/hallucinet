@@ -11,29 +11,33 @@ function love.load()
 
 	local font = love.graphics.getFont()
 
-	side_tray = ui.tray:new(0, 0, 84, love.graphics.getHeight())
+	local y = love.graphics.getHeight() * 0.5
+	side_tray = ui.tray:new(0, y, 84, 84)
 		:add_child(ui.button:new(nil, 64, 64))
 		:add_child(ui.button:new(nil, 64, 64))
 		:add_child(ui.button:new(nil, 64, 64))
 		:add_child(ui.button:new(nil, 64, 64))
+	side_tray.anchor.v = "center"
 
-	popup = ui.tray:new(94, 10, 84, 84)
+	popup = ui.tray:new(94, y, 84, 84)
 		:add_child(ui.row:new(false)
 			:add_child(ui.button:new(nil, 64, 64))
 			:add_child(ui.button:new(nil, 64, 64))
 		)
+	popup.anchor.v = "center"
 
 	--collect to container
 	g_ui = ui.container:new()
 	for i,v in ipairs({
-		side_tray, popup, 
+		side_tray, popup,
 	}) do
 		g_ui:add_child(v)
 	end
 end
 
 function love.resize(w, h)
-	side_tray.h = h
+	side_tray.y = h * 0.5
+	popup.y = h * 0.5
 end
 
 --buttons
