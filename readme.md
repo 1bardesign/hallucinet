@@ -1,6 +1,6 @@
 # Hallucinet
 
-**<<Currently under construction>>**
+**(Currently under construction)**
 
 Hallucinet is a visual toy utilising neural nets to generate pretty pictures and animations.
 
