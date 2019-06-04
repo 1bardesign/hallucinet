@@ -29,14 +29,18 @@ function ui_base:new()
 		children = {},
 		x = 0, y = 0,
 		w = 0, h = 0,
+		--todo: minw, minh
+
 		--(defaults)
-		position = "relative",
+		position = "relative", --"relative" | "absolute"
+		size = "fixed",        --"fixed" | "adaptive"
 		col = {
 			fg = {1, 1, 1, 1},
 			fg_hover = {1, 1, 1, 1},
-			bg = {0, 0, 0, 0.25},
-			bg_hover = {0, 0, 0, 0.25},
+			bg = {0, 0, 0, 0.75},
+			bg_hover = {0, 0, 0, 0.75},
 		},
+		hidden = false,
 		visible = {
 			fg = true,
 			bg = true,
@@ -73,6 +77,7 @@ function ui_base:dirty()
 			v:dirty()
 		end
 	end
+	return self
 end
 
 --layout an entire tree
@@ -83,40 +88,60 @@ function ui_base:layout()
 	local after = self.padding.after
 	local ba_total = before + after
 
-	self.w = self.padding.h * ba_total
-	self.h = self.padding.v * ba_total
+	local adaptive_size = self.size == "adaptive"
+
+	if adaptive_size then
+		self.w = self.padding.h * ba_total
+		self.h = self.padding.v * ba_total
+	end
 
 	--start of positioning
-	local x = self.padding.h * before
-	local y = self.padding.v * before
+	local x = self.layout_direction == "v" and self.padding.h * before or 0
+	local y = self.layout_direction == "h" and self.padding.v * before or 0
+
+	local done_before = false
 
 	for i, v in ipairs(self.children) do
-		--todo: skip invisible elements?
-		if v.position == "absolute" then
+		if v.hidden then
+			--(skipped)
+		elseif v.position == "absolute" then
 			--just layout child + its children (doesn't affect out layout)
 			v:layout()
 		else
+			local pad_amount = not done_before and before or between
+			done_before = true
+			if self.layout_direction == "v" then
+				y = y + self.padding.v * pad_amount
+			elseif self.layout_direction == "h" then
+				x = x + self.padding.h * pad_amount
+			end
+
 			--position child
 			v.x = x
 			v.y = y
 			--layout child + its children
 			v:layout()
 			--step around it in the right direction
-			local pad_amount = (i < #self.children and between or after)
 			if self.layout_direction == "v" then
-				self.w = math.max(self.w, self.padding.h * ba_total + v.w)
-				y = y + v.h + self.padding.v * pad_amount
+				if adaptive_size then
+					self.w = math.max(self.w, self.padding.h * ba_total + v.w)
+				end
+				y = y + v.h
 			elseif self.layout_direction == "h" then
-				self.h = math.max(self.h, self.padding.v * ba_total + v.h)
-				x = x + v.w + self.padding.h * pad_amount
+				if adaptive_size then
+					self.h = math.max(self.h, self.padding.v * ba_total + v.h)
+				end
+				x = x + v.w
 			end
 		end
 	end
 
-	if self.layout_direction == "v" then
-		self.h = y
-	elseif self.layout_direction == "h" then
-		self.w = x
+	if adaptive_size then
+		if self.layout_direction == "v" then
+			self.h = y + self.padding.v * after
+		elseif self.layout_direction == "h" then
+			self.w = x + self.padding.h * after
+		end
 	end
 
 	return self
@@ -127,18 +152,24 @@ function ui_base:add_child(c)
 	c:remove()
 	table.insert(self.children, c)
 	c.parent = self
-	--(relayout handled by remove call)
-	return self
+	return self:dirty()
+end
+
+function ui_base:add_children(c)
+	for i,v in ipairs(c) do
+		self:add_child(v)
+	end
+	return self:dirty()
 end
 
 function ui_base:remove_child(c)
 	for i, v in ipairs(self.children) do
 		if v == c then
 			table.remove(self.children, i)
+			self:dirty()
 			break
 		end
 	end
-	self:dirty()
 	return self
 end
 
@@ -188,15 +219,38 @@ function ui_base:set_visible(name, v)
 	return self
 end
 
---drawing
-function ui_base:draw_background()
-	love.graphics.rectangle("fill", 0, 0, self.w, self.h)
+--todo: collapse/expand children, neighbours
+
+function ui_base:hide(hidden)
+	self.hidden = hidden
+	self:dirty()
 end
 
-function ui_base:draw_children()
-	for _,v in ipairs(self.children) do
-		v:draw()
+function ui_base:hide_children(hidden, set_neighbours)
+	for i,v in ipairs(self.children) do
+		v:hide(hidden)
 	end
+
+	if set_neighbours ~= nil and self.parent then
+		for i,v in ipairs(self.parent.children) do
+			if v ~= self then
+				v:hide_children(set_neighbours, nil)
+			end
+		end
+	end
+	self:dirty()
+	return self
+end
+
+function ui_base:hide_neighbours(hidden)
+	if set_neighbours ~= nil and self.parent then
+		for i,v in ipairs(self.parent.children) do
+			if v ~= self then
+				v:hide(hidden)
+			end
+		end
+	end
+	return self
 end
 
 function ui_base:pos()
@@ -235,7 +289,23 @@ function ui_base:pos_absolute()
 	return px + sx, py + sy
 end
 
+--drawing
+function ui_base:draw_background()
+	love.graphics.rectangle("fill", 0, 0, self.w, self.h)
+end
+
+function ui_base:draw_children()
+	for _,v in ipairs(self.children) do
+		v:draw()
+	end
+end
+
 function ui_base:base_draw(inner)
+	--bail on hidden
+	if self.hidden then
+		return
+	end
+
 	love.graphics.push()
 	--set up position
 	if self.position == "absolute" then
@@ -271,11 +341,14 @@ end
 
 --inputs
 function ui_base:pointer(event, x, y)
+	self.is_hovered = false
+	if self.hidden then
+		return false
+	end
+
 	local px, py = self:pos_absolute()
 	local dx = x - px
 	local dy = y - py
-
-	self.is_hovered = false
 
 	--todo: consider if we want to support overlapping children?
 	local clipped = false
@@ -296,17 +369,39 @@ function ui_base:pointer(event, x, y)
 
 	if self.is_hovered then
 		if event == "click" and self.onclick then
-			self:onclick(x, y)
+			self:onclick(dx, dy)
 		end
 		if event == "drag" and self.ondrag then
-			self:ondrag(x, y)
+			self:ondrag(dx, dy)
 		end
 		if event == "release" and self.onrelease then
-			self:onrelease(x, y)
+			self:onrelease(dx, dy)
 		end
 	end
 
 	return self.is_hovered
+end
+
+function ui_base:key(event, k)
+	if self.hidden then
+		return false
+	end
+
+	local clipped = false
+	for i,v in ipairs(self.children) do
+		if v:key(event, k) then
+			clipped = true
+		end
+	end
+	if clipped then
+		return true
+	end
+
+	if self.onkey then
+		return self:onkey(event, k)
+	end
+
+	return false
 end
 
 --nop function to dummy out functions with
@@ -353,18 +448,7 @@ function ui_tray:new(x, y, w, h)
 	self.x, self.y = x, y
 	self.w, self.h = w, h
 	self.position = "absolute"
-	return self
-end
-
-function ui_tray:layout()
-	--cache beforehand
-	local cache_w, cache_h = self.w, self.h
-	--layout as normal
-	ui_base.layout(self)
-	--preserve at least what we had
-	self.w = math.max(cache_w, self.w)
-	self.h = math.max(cache_h, self.h)
-
+	self.size = "adaptive"
 	return self
 end
 
@@ -375,6 +459,7 @@ ui_row._mt = {__index = ui_row}
 
 function ui_row:new(v)
 	self = setmetatable(ui_base:new(), ui_row._mt)
+	self.size = "adaptive"
 	self.layout_direction = "h"
 	self.padding.v = 0
 	self.padding.before = 0
@@ -391,42 +476,58 @@ ui_col._mt = {__index = ui_col}
 
 function ui_col:new(v)
 	self = setmetatable(ui_base:new(), ui_row._mt)
+	self.size = "adaptive"
+	self.layout_direction = "v"
 	self.padding.h = 0
 	self.padding.before = 0
 	self.padding.after = 0
-	self.layout_direction = "v"
 	self.visible.bg = v
 	self.noclip = true
 	return self
 end
 
 --button
-local ui_button = ui_base:new():_set_leaf_type()
+local ui_button = ui_base:new()
 ui.button = ui_button
 ui_button._mt = {__index = ui_button}
 
-function ui_button:new(asset, w, h, callback)
+function ui_button:new(asset_or_text, w, h, callback, key)
 	self = setmetatable(ui_base:new(), ui_button._mt)
 
-	if asset then
-		self.ui_button_asset = asset
-		--take asset size if bigger
-		self.aw, self.ah = asset:getDimensions()
-		w = math.max(self.aw, w or 0)
-		h = math.max(self.ah, h or 0)
+	if asset_or_text then
+		if type(asset_or_text) == "string" then
+			self.ui_button_text = love.graphics.newText(love.graphics.getFont(), nil)
+			self.ui_button_text:setf(asset_or_text, w, "center")
+		else
+			self.ui_button_asset = asset
+			--take asset size if bigger
+			self.aw, self.ah = self.ui_button_asset:getDimensions()
+			w = math.max(self.aw, w or 0)
+			h = math.max(self.ah, h or 0)
+		end
 	end
 	self.w, self.h = w, h
 
-	self.col.bg_hover = {0, 0, 0, 0.5}
+	self.col.bg_hover = {0, 0, 0, 1.0}
 
 	self.onclick = callback
+	if key ~= nil then
+		function self:onkey(event, k)
+			if event == "press" and k == key then
+				callback(self, self.w * 0.5, self.h * 0.5)
+				return true
+			end
+		end
+	end
 
 	return self
 end
 
 --draw button image centred
 function ui_button:_draw()
-	if self.ui_button_asset then
+	if self.ui_button_text then
+		love.graphics.draw(self.ui_button_text, 0, (self.h - self.ui_button_text:getHeight()) * 0.5)
+	elseif self.ui_button_asset then
 		love.graphics.draw(
 			self.ui_button_asset,
 			math.floor(self.w * 0.5),
@@ -448,6 +549,9 @@ ui.text = ui_text
 ui_text._mt = {__index = ui_text}
 function ui_text:new(font, t, w, align)
 	self = setmetatable(ui_base:new(), ui_text._mt)
+
+	--default
+	font = font or love.graphics.getFont()
 
 	self.set_w = w
 	self.align = align or "center"
@@ -481,108 +585,57 @@ function ui_text:draw()
 	return self:base_draw(self._draw)
 end
 
---[[
+--collapse
+local ui_collapse = ui_base:new()
+function ui.collapse_panel(panel, button, children)
+	--hook up the toggle button
+	panel._b = button
+	panel:add_child(panel._b)
+	local prev_onclick = button.onclick
+	function button:onclick(x, y)
+		self.parent:toggle()
+		if prev_onclick then
+			prev_onclick(self, x, y)
+		end
+	end
 
---play/pause
-	(start/stop rendering)
-	(hide panel)
+	--hook up the various collapse panel callbacks
+	--(todo: consider if we need to hoist these)
+	function panel:collapsed()
+		for i,v in ipairs(self.children) do
+			if v ~= self._b and v.hidden then
+				return true
+			end
+		end
+		return false
+	end
 
---overall settings
-	render mode
-		still
-		animated
-			static
-				render fps
-				render length
-			dynamic
-				dt per tick
-	render resolution
-		10% 25% 50% 100% 200%
+	function panel:set_collapsed(set)
+		for i,v in ipairs(self.children) do
+			if v ~= self._b then
+				v:hide(set)
+			end
+		end
+		return self
+	end
 
---i/o
-	save/load: named
-		config
-		frames
+	function panel:collapse()
+		return self:set_collapsed(true)
+	end
 
---colour design
-	colour unpack modes
-	plain: rgb/hsv
-	designed:
-		colour
-			n colours
-			blend modes
-		gradient
-			n gradients -1 to 1
+	function panel:expand()
+		return self:set_collapsed(false)
+	end
 
---input design
-	add/remove input generator
-		basic:
-			x, y
-				scale
-				symmetry x, y
-			3 phase time
-				scale
-				freq
-			shape
-				generator
-					scroll
-					merge
-					square
-					circle
-					spiral
-				func
-					bands
-						single
-						steep
-						duty
-					tri
-					sin
-				fade
-					distance
-					shape
-					min
-					max
-				distort
-					bend x
-					bend y
-					sin x
-					sin y
-			transform
-				start + anim each
-				translate
-				rotate
-				scale
+	function panel:toggle()
+		return self:set_collapsed(not self:collapsed())
+	end
 
-		custom node graph later
+	panel:add_children(children)
 
---net design
-	width
-	depth
-	init params
-		gen type
-		gen scale
-		gen offset
-		init bias
-	output arity multiplier
-	generate new
-	modify weights
+	panel:collapse()
 
---postprocess
-	hueshift
-		static
-		animated
-	dither
-	posterise
-	edge detect
-	invert
-
---random
-	input configuration
-	output configuration
-	network
-	everything
-
---tutorial
-]]
+	return panel
+end
 
 return ui
