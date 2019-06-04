@@ -60,6 +60,12 @@ return function(w, h)
 	--vertically centred elements
 	hallucinet_ui.centre_elements = {}
 
+	--
+	function hallucinet_ui:go()
+		self:toggle_hide()
+		-- 	(start/stop rendering)
+	end
+
 	--tray for just the go button that pops up when there's changes
 
 	local right_side_tray = ui.tray:new(love.graphics.getWidth() - 84, h * 0.5, 84, 84)
@@ -67,8 +73,7 @@ return function(w, h)
 	-- go button
 	right_side_tray:add_child(
 		ui.button:new("go!", 64, 64, function()
-			hallucinet_ui:toggle_hide()
-			-- 	(start/stop rendering)
+			hallucinet_ui:go()
 		end)
 	)
 	--(append)
@@ -114,6 +119,18 @@ return function(w, h)
 	end
 
 	--create sub-trays for use in callbacks
+
+	-- "just give me more" button
+
+	add_side_button("another!", function()
+		--randomise settings (w / d / a)
+
+		--generate new net and input
+
+		--start as normal
+		hallucinet_ui:go()
+	end)
+
 
 	-- rendering quality/etc settings
 	local rendering_trays = {
