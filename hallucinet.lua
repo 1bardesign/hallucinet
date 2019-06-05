@@ -136,69 +136,93 @@ vec4 effect( vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords 
 #endif
 ]])
 
-local frames = {}
-local fps = 30
-local duration = 0.01
+local hallucinet = {}
+hallucinet._mt = {
+	__index = hallucinet
+}
+function hallucinet:new()
+	return setmetatable({
+		frames = {},
+		fps = 30,
+		duration = 0.01,
 
---TODO: dynamic mode w/ no cached frames (ok for slow/long animations)
-local mode = "static"
+		mode = "static",
 
-local pos_scale = 1.0
-local time_scale = 0.1
-local time_freq = 1.0
-local spin_scale = 0.2
-local hole_scale = 0.0
+		pos_scale = 1.0,
+		time_scale = 0.1,
+		time_freq = 1.0,
+		spin_scale = 0.2,
+		hole_scale = 0.0,
 
-local unique_components = 9
-local output_arity = 3
+		--net init stuff
+		unique_components = 9,
+		output_arity = 3,
+		network_width = 30,
+		network_depth = 8,
 
-local resolution = 1.0
+		init_type = "normal",
+		init_scale = 1.0,
+		init_ignore_bias = false,
 
-local unsplat_mode = "rgb_norm"
--- local unsplat_mode = "hsv_norm"
+		--cv init stuff
+		canvas_resolution = 1.0,
+		canvas_format="srgba8", --"rgb565"
 
-local frame_count = math.ceil(duration * fps)
-local hallucinet
+		unsplat_mode = "rgb_norm",
+		-- unsplat_mode = "hsv_norm",
 
-local done = false
-local hallucinet_i = 0
-local render_progress = 0
-local rendered = 0
-local render_time = 0
-local last_start = nil
+		done = false,
+		current_iteration = 0,
+		render_progress = 0,
+		rendered = 0,
+		render_time = 0,
+		last_start = nil,
 
-function init_hallucinet()
-	frames = {}
-	hallucinet_i = 0
-	rendered = 0
-	done = false
-	render_time = 0
-	last_start = nil
+		network = nil
+	}, hallucinet._mt)
+end
 
-	for i=1, frame_count do
+function hallucinet:frame_count()
+	return math.ceil(self.duration * self.fps)
+end
+
+
+function hallucinet:init()
+	self:init_storage()
+	self:init_net()
+end
+
+function hallucinet:init_storage()
+	self.frames = {}
+	self.current_iteration = 0
+	self.rendered = 0
+	self.done = false
+	self.render_time = 0
+	self.last_start = nil
+
+	for i=1, self:frame_count() do
 		local cv = love.graphics.newCanvas(
-			resolution * love.graphics.getWidth(),
-			resolution * love.graphics.getHeight(),
-			{
-				--format="rgb565"
-				format="srgba8"
-			}
+			self.canvas_resolution * love.graphics.getWidth(),
+			self.canvas_resolution * love.graphics.getHeight(),
+			{ format = self.canvas_format }
 		)
 		--cv:setFilter("nearest", "nearest")
-		table.insert(frames, cv)
+		table.insert(self.frames, cv)
 	end
+end
 
-	hallucinet = network:new({
-		input_size = unique_components,
-		output_size = 3 * output_arity,
-		width = 30,
-		depth = 10,
+function hallucinet:init_net()
+	self.network = network:new({
+		input_size = self.unique_components,
+		output_size = 3 * self.output_arity,
+		width = self.network_width,
+		depth = self.network_depth,
 
 		--initialisation cfg
 		initialise = {
-			"normal",
-			0.8,
-			false
+			self.init_type,
+			self.init_scale,
+			self.init_ignore_bias
 		},
 
 		--activation function
@@ -206,6 +230,7 @@ function init_hallucinet()
 	})
 end
 
+--todo: consider moving this inside object as well?
 local iter_cost = 2 ^ 10
 
 local chunk_update_total_h = 32
@@ -227,25 +252,26 @@ local function get_cached_canvas(t, x, y, f)
 	return cv
 end
 
-function update_hallucinet(t)
-	if done then
+function hallucinet:update(t)
+	if self.done then
 		love.timer.sleep(t)
 		return
 	end
 
 	local start = love.timer.getTime()
-	if not last_start then
-		last_start = start
+	if not self.last_start then
+		self.last_start = start
 	end
-	render_time = render_time + (start - last_start)
-	last_start = start
+	self.render_time = self.render_time + (start - self.last_start)
+	self.last_start = start
 
-	while not done and love.timer.getTime() - start < t do
+	local frame_count = self:frame_count()
 
-		local frame = math.floor(hallucinet_i % #frames) + 1
-		local chunk_i = math.floor(hallucinet_i / #frames)
+	while not self.done and love.timer.getTime() - start < t do
+		local frame = math.floor(self.current_iteration % frame_count) + 1
+		local chunk_i = math.floor(self.current_iteration / frame_count)
 
-		local fw, fh = frames[frame]:getDimensions()
+		local fw, fh = self.frames[frame]:getDimensions()
 		local fcw = math.ceil(fw / chunk_update_w)
 		local fch = math.ceil(fh / chunk_update_total_h)
 		local chunks_per_split = fcw * fch
@@ -266,17 +292,17 @@ function update_hallucinet(t)
 		--only render this partial sample if we're in-frame
 		if y < fh then
 
-			local input_cv = get_cached_canvas("input", unique_components, w * h, network.utility.create_canvas)
+			local frame_cv = self.frames[frame]
+
+			local input_cv = get_cached_canvas("input", self.unique_components, w * h, network.utility.create_canvas)
 			local output_cv = get_cached_canvas("output", w, h, function(w, h)
 				return love.graphics.newCanvas(
 					w, h,
-					{format = frames[frame]:getFormat()}
+					{format = frame_cv:getFormat()}
 				)
 			end)
 
 			local area = {x + 0.5, y + 0.5, w, h}
-
-			local frame_cv = frames[frame]
 
 			--extract pixels for next area
 			love.graphics.setCanvas(input_cv)
@@ -289,14 +315,14 @@ function update_hallucinet(t)
 
 			input_shader:send("t", t)
 
-			input_shader:send("time_freq", time_freq)
-			input_shader:send("time_scale", time_scale)
+			input_shader:send("time_freq", self.time_freq)
+			input_shader:send("time_scale", self.time_scale)
 
-			input_shader:send("pos_scale", {pos_scale, pos_scale})
+			input_shader:send("pos_scale", {self.pos_scale, self.pos_scale})
 
-			input_shader:send("spin_scale", {spin_scale, spin_scale})
+			input_shader:send("spin_scale", {self.spin_scale, self.spin_scale})
 
-			input_shader:send("hole_scale", hole_scale)
+			input_shader:send("hole_scale", self.hole_scale)
 
 			input_shader:send("rect_o", {x, y})
 			input_shader:send("rect_size", {w, h})
@@ -318,12 +344,15 @@ function update_hallucinet(t)
 			love.graphics.setShader()
 			love.graphics.setCanvas()
 			--run through net
-			hallucinet:feedforward(input_cv)
-			-- hallucinet:feedforward_1pass(input_cv)
+			if self.use_1pass then
+				self.network:feedforward_1pass(input_cv)
+			else
+				self.network:feedforward(input_cv)
+			end
 			--extract output
-			local output = hallucinet:get_output()
+			local output = self.network:get_output()
 			--un-splat output into this frame
-			unsplat_into(unsplat_mode, output, output_cv)
+			unsplat_into(self.unsplat_mode, output, output_cv)
 			love.graphics.setCanvas(frame_cv)
 			love.graphics.draw(
 				output_cv,
@@ -333,26 +362,26 @@ function update_hallucinet(t)
 			)
 			love.graphics.setCanvas()
 			--count
-			rendered = rendered + 1
+			self.rendered = self.rendered + 1
 		end
 
 		--iterate forward
-		hallucinet_i = hallucinet_i + 1
-		if (hallucinet_i / #frames) > total_chunks then
-			done = true
+		self.current_iteration = self.current_iteration + 1
+		if (self.current_iteration / frame_count) > total_chunks then
+			self.done = true
 		end
-		render_progress = hallucinet_i / #frames / total_chunks
+		self.render_progress = self.current_iteration / frame_count / total_chunks
 	end
 end
 
-function draw_hallucinet(t)
-	if not done then
+function hallucinet:draw(t)
+	if not self.done then
 		love.graphics.setColor(1,1,1,0.1)
 	end
-	t = t / duration
+	t = t / self.duration
 	t = t % 1
-	local f = math.max(1, math.min(frame_count, math.floor(1 + t * frame_count)))
-	local cv = frames[f]
+	local f = math.max(1, math.min(self:frame_count(), math.floor(1 + t * self:frame_count())))
+	local cv = self.frames[f]
 
 	love.graphics.draw(
 		cv,
@@ -364,12 +393,12 @@ function draw_hallucinet(t)
 
 	love.graphics.setColor(1,1,1,1)
 
-	if not done or love.keyboard.isDown("tab") then
+	if not self.done or love.keyboard.isDown("tab") then
 		for i,v in ipairs({
-			{"progress: ", math.floor(render_progress * 100), "%" },
-			{"ticks:    ", rendered},
-			{"time:     ", math.floor(render_time * 100) / 100, "s (", math.floor(frame_count * render_progress / render_time * 100) / 100 ,"fps)"},
-			{"eta:      ", math.max(0, math.floor(((1 / render_progress) - 1) * render_time)), "s"},
+			{"progress: ", math.floor(self.render_progress * 100), "%" },
+			{"ticks:    ", self.rendered},
+			{"time:     ", math.floor(self.render_time * 100) / 100, "s (", math.floor(self:frame_count() * self.render_progress / self.render_time * 100) / 100 ,"fps)"},
+			{"eta:      ", math.max(0, math.floor(((1 / self.render_progress) - 1) * self.render_time)), "s"},
 			{"memory: ",
 				math.ceil(collectgarbage("count")/1e3),"mb cpu ",
 				math.ceil(love.graphics.getStats().texturememory/1e6)," mb gpu"
@@ -384,7 +413,8 @@ function draw_hallucinet(t)
 	end
 end
 
---save and load
+--save and load (todo)
+--[[
 function save()
 	local f = io.open("checkpoint", "wb")
 	if f then
@@ -408,3 +438,6 @@ function load()
 		end
 	end
 end
+]]
+
+return hallucinet

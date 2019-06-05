@@ -1,11 +1,8 @@
 
-require("hallucinet")
 local ui
 
 --startup
 function love.load()
-	init_hallucinet()
-
 	local font = love.graphics.getFont()
 
 	--build ui
@@ -54,12 +51,10 @@ end
 
 --update state
 function love.update(dt)
-	update_hallucinet(1/100)
-	ui:draw(dt)
+	ui:update(dt)
 end
 
 function love.draw()
 	love.graphics.clear(0.5,0.5,0.5,0)
-	draw_hallucinet(love.timer.getTime())
 	ui:draw()
 end

@@ -2,6 +2,7 @@
 	hallucinet specific ui
 ]]
 local ui = require("ui")
+local hallucinet = require("hallucinet")
 
 return function(w, h)
 
@@ -18,10 +19,11 @@ return function(w, h)
 	end
 
 	function hallucinet_ui:update(dt)
-		--nothing to do yet, but wait for animations :)
+		self.hallucinet:update(1/1000)
 	end
 
 	function hallucinet_ui:draw()
+		self.hallucinet:draw(love.timer.getTime())
 		if not hidden then
 			self.container:layout():draw()
 		end
@@ -64,6 +66,7 @@ return function(w, h)
 	function hallucinet_ui:go()
 		self:toggle_hide()
 		-- 	(start/stop rendering)
+		self.hallucinet:init_storage()
 	end
 
 	--tray for just the go button that pops up when there's changes
@@ -125,8 +128,10 @@ return function(w, h)
 	add_side_button("another!", function()
 		--randomise settings (w / d / a)
 
-		--generate new net and input
+		--generate new input
 
+		--generate new net
+		hallucinet_ui.hallucinet:init()
 		--start as normal
 		hallucinet_ui:go()
 	end)
@@ -365,6 +370,10 @@ return function(w, h)
 
 	--position everything
 	hallucinet_ui:resize(w, h)
+
+	--set up actual hallucinet
+	hallucinet_ui.hallucinet = hallucinet:new()
+	hallucinet_ui.hallucinet:init()
 
 	return hallucinet_ui
 
