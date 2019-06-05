@@ -64,7 +64,6 @@ return function(w, h)
 
 	--
 	function hallucinet_ui:go()
-		self:toggle_hide()
 		-- 	(start/stop rendering)
 		self.hallucinet:init_storage()
 	end
@@ -126,34 +125,110 @@ return function(w, h)
 	-- "just give me more" button
 
 	add_side_button("another!", function()
+		local hn = hallucinet_ui.hallucinet
 		--randomise settings (w / d / a)
-
+		hn.network_width = love.math.random(2, 8) * 10
+		hn.network_depth = love.math.random(3, 15)
+		hn.output_arity = love.math.random(2, 9)
+		--randomise init params (type, scale, bias)
+		hn.init_type = love.math.random() < 0.5 and "normal" or "signed_uniform"
+		hn.init_scale = 0.6 + math.pow(love.math.random(), 3) * 0.8
+		hn.init_ignore_bias = love.math.random() < 0.5
 		--generate new input
 
 		--generate new net
-		hallucinet_ui.hallucinet:init()
+		hn:init()
 		--start as normal
 		hallucinet_ui:go()
 	end)
 
+	function _set_static_fps(fps)
+		hallucinet_ui.hallucinet.static_fps = fps
+		hallucinet_ui.hallucinet:init_storage()
+	end
+
+	function _set_duration(duration)
+		hallucinet_ui.hallucinet.static_duration = duration
+		hallucinet_ui.hallucinet:init_storage()
+	end
+
+	function _set_dynamic_dt(dt)
+		hallucinet_ui.hallucinet.dynamic_dt = dt
+		hallucinet_ui.hallucinet:init_storage()
+	end
 
 	-- rendering quality/etc settings
 	local rendering_trays = {
-		ui.row:new():add_children({
-			ui.button:new("fps", 64, 64, function()
-				-- render fps
-			end),
-			ui.button:new("length", 64, 64, function()
-				-- render length
-			end),
+		ui.col:new():add_children({
+			ui.text:new(nil, "framerate", text_width_for_buttons(3), "center"),
+			ui.row:new():add_children({
+				ui.button:new("10", 32, 32, function()
+					_set_static_fps(10)
+				end),
+				ui.button:new("15", 32, 32, function()
+					_set_static_fps(15)
+				end),
+				ui.button:new("20", 36, 32, function()
+					_set_static_fps(20)
+				end),
+				ui.button:new("30", 36, 32, function()
+					_set_static_fps(30)
+				end),
+				ui.button:new("60", 36, 32, function()
+					_set_static_fps(60)
+				end),
+			}),
+			ui.text:new(nil, "duration", text_width_for_buttons(3), "center"),
+			ui.row:new():add_children({
+				ui.button:new("3 s", 32, 32, function()
+					_set_duration(3)
+				end),
+				ui.button:new("5 s", 32, 32, function()
+					_set_duration(5)
+				end),
+				ui.button:new("10 s", 36, 32, function()
+					_set_duration(10)
+				end),
+				ui.button:new("20 s", 36, 32, function()
+					_set_duration(20)
+				end),
+				ui.button:new("30 s", 36, 32, function()
+					_set_duration(30)
+				end),
+			}),
 		}),
+		ui.col:new():add_children({
+			ui.text:new(nil, "duration in frames", text_width_for_buttons(3), "center"),
+			ui.row:new():add_children({
+				ui.button:new("50", 32, 32, function()
+					_set_dynamic_dt(1/50)
+				end),
+				ui.button:new("100", 32, 32, function()
+					_set_dynamic_dt(1/100)
+				end),
+				ui.button:new("250", 36, 32, function()
+					_set_dynamic_dt(1/250)
+				end),
+				ui.button:new("500", 36, 32, function()
+					_set_dynamic_dt(1/500)
+				end),
+				ui.button:new("1000", 36, 32, function()
+					_set_dynamic_dt(1/1000)
+				end),
+			}),
+		})
 	}
 	local function _show_rendering_tray(show_i)
 		for i,v in ipairs(rendering_trays) do
 			v:hide(i ~= show_i)
 		end
 	end
-	_show_rendering_tray(nil)
+	_show_rendering_tray(1) --static by default
+
+	local function _set_resolution(res)
+		hallucinet_ui.hallucinet.canvas_resolution = res
+		hallucinet_ui.hallucinet:init_storage()
+	end
 
 	add_popup_tray("render settings")
 		:add_children({
@@ -164,14 +239,25 @@ return function(w, h)
 					ui.text:new(nil, "mode", text_width_for_buttons(2), "center"),
 					ui.row:new():add_children({
 						ui.button:new("static", 64, 64, function()
+							hallucinet_ui.hallucinet.mode = "static"
+							hallucinet_ui.hallucinet.static_fps = 15
+							hallucinet_ui.hallucinet.static_duration = 10
+							hallucinet_ui.hallucinet:init_storage()
 							_show_rendering_tray(1)
 						end),
 						ui.button:new("dynamic", 64, 64, function()
-							_show_rendering_tray(nil)
+							hallucinet_ui.hallucinet.mode = "dynamic"
+							hallucinet_ui.hallucinet.dynamic_dt_scale = 1/1000
+							hallucinet_ui.hallucinet:init_storage()
+							_show_rendering_tray(2)
 						end),
 					}),
 					ui.row:new():add_children({
 						ui.button:new("still", 64, 64, function()
+							hallucinet_ui.hallucinet.mode = "static"
+							hallucinet_ui.hallucinet.static_fps = 1
+							hallucinet_ui.hallucinet.static_duration = 0.01
+							hallucinet_ui.hallucinet:init_storage()
 							_show_rendering_tray(nil)
 						end),
 					}),
@@ -184,57 +270,59 @@ return function(w, h)
 			ui.text:new(nil, "resolution", text_width_for_buttons(5), "center"),
 			ui.row:new():add_children({
 				ui.button:new("10%", 64, 32, function()
-					-- 10%
+					_set_resolution(0.10)
 				end),
 				ui.button:new("25%", 64, 32, function()
-					-- 25%
+					_set_resolution(0.25)
 				end),
 				ui.button:new("50%", 64, 32, function()
-					-- 50%
+					_set_resolution(0.50)
 				end),
 				ui.button:new("100%", 64, 32, function()
-					-- 100%
+					_set_resolution(1.00)
 				end),
 				ui.button:new("200%", 64, 32, function()
-					-- 200%
+					_set_resolution(2.00)
 				end),
 			})
 		})
 
-	--saving to disk
-	add_popup_tray("i/o")
-		:add_children({
-			ui.text:new(nil, "config", text_width_for_buttons(2), "center"),
-			ui.row:new():add_children({
-				ui.button:new("save", 64, 64, function()
-				end),
-				ui.button:new("load", 64, 64, function()
-				end),
-			}),
-			ui.text:new(nil, "frames", text_width_for_buttons(2), "center"),
-			ui.row:new():add_children({
-				ui.button:new("save", 64, 64, function()
-				end),
-				ui.button:new("load", 64, 64, function()
-				end),
-			}),
-		})
+	-- --saving to disk
+	-- add_popup_tray("i/o")
+	-- 	:add_children({
+	-- 		ui.text:new(nil, "config", text_width_for_buttons(2), "center"),
+	-- 		ui.row:new():add_children({
+	-- 			ui.button:new("save", 64, 64, function()
+	-- 			end),
+	-- 			ui.button:new("load", 64, 64, function()
+	-- 			end),
+	-- 		}),
+	-- 		ui.text:new(nil, "frames", text_width_for_buttons(2), "center"),
+	-- 		ui.row:new():add_children({
+	-- 			ui.button:new("save", 64, 64, function()
+	-- 			end),
+	-- 			ui.button:new("load", 64, 64, function()
+	-- 			end),
+	-- 		}),
+	-- 	})
 
 	-- --colour design
-	add_popup_tray("colour")
-		-- 	plain: rgb/hsv
-		:add_child(ui.row:new()
-			:add_child(ui.button:new("rgb", 64, 64, function()
-			end))
-			:add_child(ui.button:new("hsv", 64, 64, function()
-			end))
-		)
-		:add_child(ui.row:new()
-			:add_child(ui.button:new("colour", 64, 64, function()
-			end))
-			:add_child(ui.button:new("gradient", 64, 64, function()
-			end))
-		)
+	-- add_popup_tray("colour")
+	-- 	-- 	plain: rgb/hsv
+	-- 	:add_child(ui.row:new()
+	-- 		:add_child(ui.button:new("rgb", 64, 64, function()
+	-- 			hallucinet_ui.hallucinet.unsplat_mode = "rgb_norm"
+	-- 		end))
+	-- 		:add_child(ui.button:new("hsv", 64, 64, function()
+	-- 			hallucinet_ui.hallucinet.unsplat_mode = "hsv_norm"
+	-- 		end))
+	-- 	)
+	-- 	:add_child(ui.row:new()
+	-- 		:add_child(ui.button:new("colour", 64, 64, function()
+	-- 		end))
+	-- 		:add_child(ui.button:new("gradient", 64, 64, function()
+	-- 		end))
+	-- 	)
 
 	-- --input design
 	-- 	add/remove input generator
@@ -274,6 +362,9 @@ return function(w, h)
 	-- 				translate
 	-- 				rotate
 	-- 				scale
+
+	--todo: read generator_spec interactively here
+
 	add_popup_tray("input")
 		-- 	plain: rgb/hsv
 		:add_child(ui.row:new()
