@@ -104,7 +104,7 @@ return function(w, h)
 
 		local function _spinning_grad()
 			local t = shape_gen_set_gradient(shape_gen_blank(), _hr())
-			shape_gen_anim_spins(t, love.math.random(-1, 1))
+			shape_gen_anim_spins(t, love.math.random(-2, 2))
 			return shape_gen_random_transform(t)
 		end
 
@@ -113,25 +113,25 @@ return function(w, h)
 				{"time_triple", {_hr()}},
 				{"xy", {_hr()}},
 				{"xy", {_hr()}},
-				random_shape_gen(),
 			},
 			{
-				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				{"time", {1, _hr(), _hr()}},
 				{"xy", {_hr()}},
 				{"xy", {_hr()}},
 				_spinning_grad(),
-				_random_symmetry(),
-				random_shape_gen(),
-			},
-			{
-				{"time_triple", {_hr()}},
-				{"xy", {_hr()}},
-				{"xy", {_hr()}},
-				shape_gen_random_transform(shape_gen_set_wedge(shape_gen_blank())),
-			},
-			{
-				{"time_triple", {_hr()}},
 				_spinning_grad(),
+			},
+			{
+				{"time", {1, _hr(), _hr()}},
+				_spinning_grad(),
+				_spinning_grad(),
+				_spinning_grad(),
+				_spinning_grad(),
+				_spinning_grad(),
+				_spinning_grad(),
+			},
+			{
+				{"time_triple", {_hr()}},
 				_spinning_grad(),
 				_spinning_grad(),
 				_random_quarter_turn(shape_gen_set_gradient(shape_gen_blank())),
@@ -143,27 +143,59 @@ return function(w, h)
 				_random_quarter_turn(shape_gen_set_gradient(shape_gen_blank())),
 				_random_symmetry(),
 				random_shape_gen(),
-				random_shape_gen(),
 			},
 			{
 				{"time_triple", {_hr()}},
 				{"time", {love.math.random(1, 3), _hr(), _hr()}},
-				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				{"time", {1, _hr(), _hr()}},
 				{"xy", {_hr()}},
-				random_shape_gen(),
+				shape_gen_random_fade(shape_gen_anim(
+					shape_gen_pattern_bands(
+						shape_gen_set_gradient(
+							shape_gen_random_shape(shape_gen_blank(
+								_hr(),
+								1 + love.math.random() * 2
+							)),
+							0
+						), 0.1 + love.math.random() * 0.2
+					), love.math.random(-3, 3), "linear"
+				))
 			},
 		}
 
 		return possible_specs[love.math.random(1, #possible_specs)]
 	end
 
+
 	--randomisation functions
 	function hallucinet_ui:new_net()
+		local hn = self.hallucinet
+		--randomise settings (w / d / a)
+		hn.network_width = love.math.random(2, 6) * 10
+		hn.network_depth = love.math.random(5, 14)
+		hn.output_arity = love.math.random(2, 4)
+		--randomise init params (type, scale, bias)
+		if love.math.random() < 0.5 then
+			hn.init_type = "normal"
+			hn.init_scale = 0.5 + love.math.random() * 0.4
+		else
+			hn.init_type = "signed_uniform"
+			hn.init_scale = 0.9 + love.math.random() * 0.4
+		end
+		hn.init_ignore_bias = love.math.random() < 0.5
 
+		--todo: need to switch the unpack mode here too
+		-- hn.activation = love.math.random() < 0.5
+		-- 	and network.activate.tanh
+		-- 	or network.activate.lrelu
+
+		self.hallucinet:init_net()
+		self.hallucinet:init_storage()
 	end
 
 	function hallucinet_ui:new_input()
-
+		self.hallucinet.input_generator_spec = generate_spec_base()
+		self.hallucinet:init_storage()
 	end
 
 	--tray for just the go button that pops up when there's changes
@@ -171,11 +203,18 @@ return function(w, h)
 	local right_side_tray = ui.tray:new(love.graphics.getWidth() - 84, h * 0.5, 84, 84)
 	right_side_tray.right_side = true
 	-- go button
-	right_side_tray:add_child(
-		ui.button:new("go!", 64, 64, function()
-			hallucinet_ui:go()
-		end)
-	)
+	right_side_tray:add_children({
+		ui.button:new("new net", 64, 64, function()
+			hallucinet_ui:new_net()
+		end),
+		ui.button:new("new input", 64, 64, function()
+			hallucinet_ui:new_input()
+		end),
+		ui.button:new("surprise me", 64, 64, function()
+			hallucinet_ui:new_net()
+			hallucinet_ui:new_input()
+		end),
+	})
 	--(append)
 	hallucinet_ui.container:add_child(right_side_tray)
 	table.insert(hallucinet_ui.centre_elements, right_side_tray)
@@ -219,34 +258,6 @@ return function(w, h)
 	end
 
 	--create sub-trays for use in callbacks
-
-	-- "just give me more" button
-
-	add_side_button("another!", function()
-		local hn = hallucinet_ui.hallucinet
-		--randomise settings (w / d / a)
-		hn.network_width = love.math.random(2, 6) * 10
-		hn.network_depth = love.math.random(5, 14)
-		hn.output_arity = love.math.random(3, 6)
-		--randomise init params (type, scale, bias)
-		if love.math.random() < 0.5 then
-			hn.init_type = "normal"
-			hn.init_scale = 0.5 + love.math.random() * 0.5
-		else
-			hn.init_type = "signed_uniform"
-			hn.init_scale = 0.9 + love.math.random() * 0.4
-		end
-		hn.init_ignore_bias = love.math.random() < 0.5
-		hn.activation = love.math.random() < 0.5
-			and network.activate.tanh
-			or network.activate.lrelu
-		--generate new input
-		hn.input_generator_spec = generate_spec_base()
-		--generate new net
-		hn:init()
-		--start as normal
-		hallucinet_ui:go()
-	end)
 
 	function _set_static_fps(fps)
 		hallucinet_ui.hallucinet.static_fps = fps
@@ -471,56 +482,56 @@ return function(w, h)
 
 	--todo: read generator_spec interactively here
 
-	add_popup_tray("input")
-		-- 	plain: rgb/hsv
-		:add_child(ui.row:new()
-			:add_children({
-				ui.button:new("xy", 64, 64, function()
-				end),
-				ui.button:new("time", 64, 64, function()
-				end),
-				ui.button:new("shape", 64, 64, function()
-				end),
-			})
-		)
+	-- add_popup_tray("input")
+	-- 	-- 	plain: rgb/hsv
+	-- 	:add_child(ui.row:new()
+	-- 		:add_children({
+	-- 			ui.button:new("xy", 64, 64, function()
+	-- 			end),
+	-- 			ui.button:new("time", 64, 64, function()
+	-- 			end),
+	-- 			ui.button:new("shape", 64, 64, function()
+	-- 			end),
+	-- 		})
+	-- 	)
 
 	-- 		custom node graph later
 
-	add_popup_tray("net")
-		-- 	plain: rgb/hsv
-		:add_child(ui.col:new()
-			:add_children({
-				ui.text:new(nil, "modify", text_width_for_buttons(4)),
-				ui.row:new():add_children({
-					ui.button:new("random", 64, 64, function()
-					end),
-					ui.button:new("smudge", 64, 64, function()
-					end),
-					ui.button:new("revert", 64, 64, function()
-					end),
-				}),
-				ui.text:new(nil, "shape", text_width_for_buttons(4)),
-				ui.row:new():add_children({
-					ui.button:new("width", 64, 64, function()
-					end),
-					ui.button:new("depth", 64, 64, function()
-					end),
-					ui.button:new("arity", 64, 64, function()
-					end),
-				}),
-				ui.text:new(nil, "init parameters", text_width_for_buttons(4)),
-				ui.row:new():add_children({
-					ui.button:new("type", 64, 64, function()
-					end),
-					ui.button:new("scale", 64, 64, function()
-					end),
-					ui.button:new("offset", 64, 64, function()
-					end),
-					ui.button:new("bias", 64, 64, function()
-					end),
-				}),
-			})
-		)
+	-- add_popup_tray("net")
+	-- 	-- 	plain: rgb/hsv
+	-- 	:add_child(ui.col:new()
+	-- 		:add_children({
+	-- 			ui.text:new(nil, "modify", text_width_for_buttons(4)),
+	-- 			ui.row:new():add_children({
+	-- 				ui.button:new("random", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("smudge", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("revert", 64, 64, function()
+	-- 				end),
+	-- 			}),
+	-- 			ui.text:new(nil, "shape", text_width_for_buttons(4)),
+	-- 			ui.row:new():add_children({
+	-- 				ui.button:new("width", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("depth", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("arity", 64, 64, function()
+	-- 				end),
+	-- 			}),
+	-- 			ui.text:new(nil, "init parameters", text_width_for_buttons(4)),
+	-- 			ui.row:new():add_children({
+	-- 				ui.button:new("type", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("scale", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("offset", 64, 64, function()
+	-- 				end),
+	-- 				ui.button:new("bias", 64, 64, function()
+	-- 				end),
+	-- 			}),
+	-- 		})
+	-- 	)
 
 	-- --net design
 	-- 	width

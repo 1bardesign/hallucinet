@@ -1,8 +1,10 @@
 --generator output functions
-function shape_gen_blank()
+function shape_gen_blank(strength, frequency)
+	strength = strength or 1
+	frequency = frequency or 1
 	return {"shape", {
-		1.0,	--"shape_strength"
-		1.0,	--"shape_freq"
+		strength,	--"shape_strength"
+		frequency,	--"shape_freq"
 		0.0,	--"bands_duty"
 		0.0,	--"bands_steep"
 		0.0,	--"use_sin"
@@ -53,7 +55,6 @@ function shape_gen_pattern_sin(t)
 	return t
 end
 
-
 function shape_gen_set_gradient(t, amount)
 	t[2][6] = amount or 1.0
 	return t
@@ -83,7 +84,7 @@ function shape_gen_anim(t, loops, anim_type)
 	t[2][12] = math.floor(loops)
 	t[2][13] = anim_type == "linear"	and 1.0 or 0.0
 	t[2][14] = anim_type == "sin"		and 1.0 or 0.0
-	t[2][15] = anim_type == "sqsin"	and 1.0 or 0.0
+	t[2][15] = anim_type == "sqsin"		and 1.0 or 0.0
 	t[2][16] = anim_type == "bounce"	and 1.0 or 0.0
 	t[2][17] = anim_type == "sqbounce"	and 1.0 or 0.0
 	t[2][18] = anim_type == "hesitant"	and 1.0 or 0.0
@@ -120,53 +121,82 @@ function shape_gen_random_transform(t)
 	)
 end
 
-function random_shape_gen()
-	local t = shape_gen_blank()
-
-	if love.math.random() < 0.5 then
-		shape_gen_set_gradient(t, love.math.random())
-	end
-	if love.math.random() < 0.5 then
-		shape_gen_set_wedge(t, love.math.random())
-	end
-	if love.math.random() < 0.5 then
-		shape_gen_set_curve(t, love.math.random())
-	end
-	if love.math.random() < 0.5 then
-		shape_gen_set_diamond(t, love.math.random())
-	end
-	if love.math.random() < 0.5 then
-		shape_gen_set_square(t, love.math.random())
-	end
-	if love.math.random() < 0.5 then
-		shape_gen_set_circle(t, love.math.random())
-	end
-
+function shape_gen_random_pattern(t)
 	if love.math.random() < 0.5 then
 		shape_gen_pattern_bands(t, 0.25, 10.0)
 	elseif love.math.random() < 0.5 then
 		shape_gen_pattern_sin(t)
 	end
+	return t
+end
 
-	if love.math.random() < 0.9 then
-		shape_gen_anim(t, love.math.random(1, 3),
-			love.math.random() < 0.5 and "linear"
-			or love.math.random() < 0.5 and "sin"
-			or love.math.random() < 0.5 and "bounce"
-			or love.math.random() < 0.5 and "hesitant"
-			or love.math.random() < 0.5 and "tri"
-			or love.math.random() < 0.5 and "sqsin"
-			or "sqbounce"
-		)
-	end
+function shape_gen_random_shape(t)
+	shape_gen_set_gradient(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	shape_gen_set_wedge(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	shape_gen_set_curve(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	shape_gen_set_diamond(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	shape_gen_set_square(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	shape_gen_set_circle(
+		t,
+		love.math.random() < 0.5
+			and love.math.random() * 2 - 1
+			or 0.0
+	)
+	return t
+end
+
+function shape_gen_random_fade(t)
+	return shape_gen_fade(t,
+		love.math.random() < 0.5 and "distance" or "shape",
+		0.5 - love.math.random() * 5,
+		1 + love.math.random() * 5,
+		0.5 + love.math.random()
+	)
+end
+
+function random_shape_gen()
+	local t = shape_gen_blank()
+
+	shape_gen_random_shape(t)
+	shape_gen_random_pattern(t)
+
+	shape_gen_anim(t, love.math.random(-3, 3),
+		love.math.random() < 0.5 and "linear"
+		or love.math.random() < 0.5 and "sin"
+		or love.math.random() < 0.5 and "bounce"
+		or love.math.random() < 0.5 and "hesitant"
+		or love.math.random() < 0.5 and "tri"
+		or love.math.random() < 0.5 and "sqsin"
+		or "sqbounce"
+	)
 
 	if love.math.random() < 0.75 then
-		shape_gen_fade(t,
-			love.math.random() < 0.5 and "distance" or "shape",
-			0.5 - love.math.random() * 5,
-			1 + love.math.random() * 5,
-			0.5 + love.math.random()
-		)
+		shape_gen_random_fade(t)
 	end
 
 	shape_gen_random_transform(t)
