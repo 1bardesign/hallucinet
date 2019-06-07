@@ -1,6 +1,7 @@
 local network = require("nn_gpu")
 local ffi = require("ffi")
 require("splat")
+require("shape_gen")
 
 local input_template = [[
 extern float time_scale;
@@ -30,6 +31,19 @@ float bands(float x, float duty, float steep) {
 	return smoothstep(0.0, 1.0, clamp(s, -1.0, 1.0));
 }
 
+vec2 transform_point(vec2 p, vec2 offset, float rotation, vec2 scale) {
+	float c = cos(-rotation);
+	float s = sin(-rotation);
+	//todo: optimise
+	p -= offset;
+	p /= scale;
+	p = vec2(
+		p.x * c - p.y * s,
+		p.y * c + p.x * s
+	);
+	return p;
+}
+
 float get_input(vec2 px) {
 	int input_stage = int(px.x);
 	float e_x = (rect_o.x +   mod(px.y,  rect_size.x)) / screen_size.x;
@@ -38,9 +52,6 @@ float get_input(vec2 px) {
 	e_y = e_y * 2.0 - 1.0;
 
 	e_x *= aspect;
-
-	float st = sin(t * TAU);
-	float ct = cos(t * TAU);
 
 	__STAGES__
 
@@ -57,113 +68,143 @@ vec4 effect( vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords 
 ]]
 
 local shape_template = [[
-float spins = 0.0;
-float spin_offset = 0.0 * TAU;
-float st = spin_offset + t * TAU * spins;
-float s_x = e_x * cos(st) - e_y * sin(st);
-float s_y = e_y * cos(st) + e_x * sin(st);
+//get transformed position here
+vec2 s_p = transform_point(
+	vec2(e_x, e_y),
+	vec2(shape_offset_x, shape_offset_y),
+	(shape_rotation + t * anim_spins) * TAU,
+	vec2(shape_scale_x, shape_scale_y)
+);
 
-float anim_var = t; //linear
-//float anim_var = st * 0.5; //sin
-//float anim_var = st * st * sign(st) * 0.5; //sin2
-//float anim_var = abs(st) * 0.5; //bounce
-//float anim_var = st * st * 0.5; //bounce2
-//float anim_var = t + st * 0.2; //hesitant
-//float anim_var = triangle(t); //tri
-float anim_amount = -1.0;
+//(unpack)
+float s_x = s_p.x;
+float s_y = s_p.y;
 
-float d = length(vec2(e_x, e_y));
+//mix animation curves
+float st = sin(t * TAU);
+float anim_var = 0;
+anim_var += anim_amount_linear * (t);
+anim_var += anim_amount_sin * (st * 0.5);
+anim_var += anim_amount_sqsin * (st * st * sign(st) * 0.5);
+anim_var += anim_amount_bounce * (abs(st) * 0.5);
+anim_var += anim_amount_sqbounce * (st * st * 0.5);
+anim_var += anim_amount_hesitant * (t + st * 0.2);
+anim_var += anim_amount_tri * (triangle(t));
+
+float d = length(vec2(s_x, s_y));
 
 //base shapes
 
-//float x = abs(s_y); //merge bands
-//float x = s_y; //scroll bands
-float x = abs(s_x) + abs(s_y); //diamond
-//float x = max(abs(s_x), abs(s_y)); //square
-//float x = d; //circle
-//float x = ((atan(s_y, s_x) / PI) + d * 0.2) * 3.0; //spiral
-
-//modifiers
-//x -= abs(s_x) * 0.5; //x bend
-//x += cos(s_x * TAU) * 0.1; //x wave
-//x += cos(s_y * TAU) * 0.1; //y wave
-//x += cos(d * TAU) * 0.1; //radial wave
-//x += d; //radial
-
-//general wave args
-float freq = 1.0;
-float scale = 0.1;
-
-//band args
-float duty = 0.25;
-float steep = 10.0;
+float x = 0.0;
+x += shape_amount_gradient * s_y;
+x += shape_amount_wedge * abs(s_y);
+x += shape_amount_curve * cos(s_y * PI * 0.5);
+x += shape_amount_diamond * (abs(s_x) + abs(s_y));
+x += shape_amount_square * max(abs(s_x), abs(s_y));
+x += shape_amount_circle * d;
+x /= max(
+	1.0,
+	abs(shape_amount_gradient) +
+	abs(shape_amount_wedge) +
+	abs(shape_amount_curve) +
+	abs(shape_amount_diamond) +
+	abs(shape_amount_square) +
+	abs(shape_amount_circle)
+);
 
 //fade in/out range
-float min_range = -2.0;
-float max_range = 2.0;
-float fade_steep = 0.5;
-float fade_var = x; //fade on surface
-//float fade_var = d; //fade on distance
+float fade_var = mix(
+	d, //fade on distance
+	x, //fade on surface
+	range_var_balance
+);
 float fade = clamp(min(fade_var - min_range, max_range - fade_var) * fade_steep, 0.0, 1.0);
 
-float v = bands((x + anim_var * anim_amount) * freq, duty, steep); //bands
-//float v = sin((x + anim_var * anim_amount) * freq * TAU); //sin
-//float v = (x + anim_var * anim_amount) * freq; //linear
-return v * scale * fade;
+float v = (x + anim_var * anim_strength) * shape_freq;
+if (bands_duty > 0.0 && bands_steep > 0.0) {
+	v = bands(v, bands_duty, bands_steep);
+} else if (use_sin > 0.0) {
+	float v = sin(v * TAU);
+}
+
+return v * shape_strength * fade;
 ]]
 
 
 local generator_templates = {
-	pos = {
+	xy = {
 		{
-			"pos_scale_x",
-			"pos_scale_y",
+			"scale",
 		},
 		{
-			"e_x * pos_scale_x",
-			"e_y * pos_scale_y",
+			"e_x * scale",
+			"e_y * scale",
 		}
 	},
 	time = {
 		{
 			"time_freq",
+			"time_offset",
 			"time_scale",
 		},
 		{
-			"sin((t * time_freq + 1.0 / 3.0) * TAU) * time_scale",
-			"sin((t * time_freq + 2.0 / 3.0) * TAU) * time_scale",
-			"sin((t * time_freq + 3.0 / 3.0) * TAU) * time_scale",
+			"sin((t * time_freq + time_offset) * TAU) * time_scale",
 		}
 	},
-	spin = {
+	time_triple = {
 		{
-			"spin_scale_x",
-			"spin_scale_y",
+			"time_scale",
 		},
 		{
-			"(e_x * ct - e_y * st) * spin_scale_x",
-			"(e_y * ct + e_x * st) * spin_scale_y",
+			"sin((t + 1.0 / 3.0) * TAU) * time_scale",
+			"sin((t + 2.0 / 3.0) * TAU) * time_scale",
+			"sin((t + 3.0 / 3.0) * TAU) * time_scale",
 		}
 	},
-	hole = {
+	shape = {
 		{
-			"hole_size",
-			"hole_scale",
-		},
-		{
-			"(1.0 - length(vec2(e_x, e_y) * hole_size)) * hole_scale",
-		}
-	},
-	-- {
-	-- 	shape_template
-	-- }
-}
+			--general shape args
+			"shape_strength",
+			"shape_freq",
 
-local generator_spec = {
-	{"pos", {1.0, 1.0}},
-	{"time", {1.0, 1.0}},
-	{"spin", {1.0, 1.0}},
-	{"hole", {1.0, 1.0}},
+			--overall curve args
+			"bands_duty", -->0? bands mode
+			"bands_steep", -->0? bands mode
+			"use_sin", -->0? sin mode
+
+			"shape_amount_gradient",
+			"shape_amount_wedge",
+			"shape_amount_curve",
+			"shape_amount_diamond",
+			"shape_amount_square",
+			"shape_amount_circle",
+
+			--animation args
+			"anim_strength",
+			"anim_amount_linear",
+			"anim_amount_sin",
+			"anim_amount_sqsin",
+			"anim_amount_bounce",
+			"anim_amount_sqbounce",
+			"anim_amount_hesitant",
+			"anim_amount_tri",
+
+			--range args
+			"range_var_balance", --1.0 = all shape, 0.0 = all distance
+			"min_range",
+			"max_range",
+			"fade_steep",
+
+			--transform anim args
+			"anim_spins",
+			"shape_rotation",
+			"shape_offset_x",
+			"shape_offset_y",
+			"shape_scale_x",
+			"shape_scale_y",
+		},
+		shape_template
+	}
 }
 
 function input_shader_uniqueinputs(spec)
@@ -221,7 +262,7 @@ function input_shader_source(spec)
 		--construct output block for generator
 		if type(outputs) == "string" then
 			--verbatim block
-			add_output_block(outputs)
+			add_output_block(replace_consts(outputs:gsub("\n", "\n\t\t"), const_names, i))
 		else
 			--multiple return fragments
 			for _, stage in ipairs(outputs) do
@@ -240,7 +281,7 @@ local hallucinet = {}
 hallucinet._mt = {
 	__index = hallucinet
 }
-function hallucinet:new()
+function hallucinet:new(generator_spec)
 	return setmetatable({
 		frames = {},
 
@@ -382,13 +423,19 @@ function hallucinet:render_slice(frame_cv, x, y, w, h, t)
 		love.graphics.setCanvas(input_cv)
 		love.graphics.setShader(self.input_shader)
 
-		self.input_shader:send("screen_size", {fw, fh})
-		self.input_shader:send("aspect", fw / fh)
+		local function _send_if_exists(shader, name, v)
+			if shader:hasUniform(name) then
+				shader:send(name, v)
+			end
+		end
 
-		self.input_shader:send("t", t)
+		_send_if_exists(self.input_shader, "screen_size", {fw, fh})
+		_send_if_exists(self.input_shader, "aspect", fw / fh)
 
-		self.input_shader:send("rect_o", {x, y})
-		self.input_shader:send("rect_size", {w, h})
+		_send_if_exists(self.input_shader, "t", t)
+
+		_send_if_exists(self.input_shader, "rect_o", {x, y})
+		_send_if_exists(self.input_shader, "rect_size", {w, h})
 
 		--can trade-off here if shader incoherence is hurting throughput
 		--but the more complicated draw itself is likely to hurt more
@@ -519,7 +566,7 @@ function hallucinet:draw(t)
 	local cv = self.frames[1]
 	if self.mode == "static" then
 		if not self.done then
-			love.graphics.setColor(1,1,1,0.1)
+			love.graphics.setColor(1,1,1,0.5)
 		end
 		t = t / self.static_duration
 		t = t % 1

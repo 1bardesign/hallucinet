@@ -10,7 +10,7 @@ local read_float_texture = require("read_float_texture")
 -------------------------------------------------------------------------------
 --shared utility
 
-local _1d_canvas_format = "r16f"
+local _1d_canvas_format = "r32f"
 local function create_canvas(w, h)
 	local cv = love.graphics.newCanvas(
 		w, h,

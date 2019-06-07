@@ -2,7 +2,9 @@
 	hallucinet specific ui
 ]]
 local ui = require("ui")
+local network = require("nn_gpu")
 local hallucinet = require("hallucinet")
+require("shape_gen")
 
 return function(w, h)
 
@@ -10,6 +12,15 @@ return function(w, h)
 
 	--allocate the container
 	hallucinet_ui.container = ui.container:new()
+
+	--the things we need to watch for restarting nets
+	local _net_specific = {
+
+	}
+
+	local _init_specific = {
+
+	}
 
 	--various callbacks
 
@@ -66,6 +77,93 @@ return function(w, h)
 	function hallucinet_ui:go()
 		-- 	(start/stop rendering)
 		self.hallucinet:init_storage()
+	end
+
+	local function generate_spec_base()
+		local function _hr()
+			return 0.5 + love.math.random()
+		end
+
+		local function _random_quarter_turn(t)
+			return shape_gen_transform(
+				t,
+				0, 0,
+				(love.math.random(0, 3) / 4)
+			)
+		end
+
+		local function _random_symmetry()
+			local t = shape_gen_blank()
+			if love.math.random() < 0.5 then
+				shape_gen_set_wedge(t)
+			else
+				shape_gen_set_curve(t)
+			end
+			return _random_quarter_turn(t)
+		end
+
+		local function _spinning_grad()
+			local t = shape_gen_set_gradient(shape_gen_blank(), _hr())
+			shape_gen_anim_spins(t, love.math.random(-1, 1))
+			return shape_gen_random_transform(t)
+		end
+
+		local possible_specs = {
+			{
+				{"time_triple", {_hr()}},
+				{"xy", {_hr()}},
+				{"xy", {_hr()}},
+				random_shape_gen(),
+			},
+			{
+				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				{"xy", {_hr()}},
+				{"xy", {_hr()}},
+				_spinning_grad(),
+				_random_symmetry(),
+				random_shape_gen(),
+			},
+			{
+				{"time_triple", {_hr()}},
+				{"xy", {_hr()}},
+				{"xy", {_hr()}},
+				shape_gen_random_transform(shape_gen_set_wedge(shape_gen_blank())),
+			},
+			{
+				{"time_triple", {_hr()}},
+				_spinning_grad(),
+				_spinning_grad(),
+				_spinning_grad(),
+				_random_quarter_turn(shape_gen_set_gradient(shape_gen_blank())),
+				_random_symmetry(),
+			},
+			{
+				{"time_triple", {_hr()}},
+				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				_random_quarter_turn(shape_gen_set_gradient(shape_gen_blank())),
+				_random_symmetry(),
+				random_shape_gen(),
+				random_shape_gen(),
+			},
+			{
+				{"time_triple", {_hr()}},
+				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				{"time", {love.math.random(1, 3), _hr(), _hr()}},
+				{"xy", {_hr()}},
+				random_shape_gen(),
+			},
+		}
+
+		return possible_specs[love.math.random(1, #possible_specs)]
+	end
+
+	--randomisation functions
+	function hallucinet_ui:new_net()
+
+	end
+
+	function hallucinet_ui:new_input()
+
 	end
 
 	--tray for just the go button that pops up when there's changes
@@ -127,15 +225,23 @@ return function(w, h)
 	add_side_button("another!", function()
 		local hn = hallucinet_ui.hallucinet
 		--randomise settings (w / d / a)
-		hn.network_width = love.math.random(2, 8) * 10
-		hn.network_depth = love.math.random(3, 15)
-		hn.output_arity = love.math.random(2, 9)
+		hn.network_width = love.math.random(2, 6) * 10
+		hn.network_depth = love.math.random(5, 14)
+		hn.output_arity = love.math.random(3, 6)
 		--randomise init params (type, scale, bias)
-		hn.init_type = love.math.random() < 0.5 and "normal" or "signed_uniform"
-		hn.init_scale = 0.6 + math.pow(love.math.random(), 3) * 0.8
+		if love.math.random() < 0.5 then
+			hn.init_type = "normal"
+			hn.init_scale = 0.5 + love.math.random() * 0.5
+		else
+			hn.init_type = "signed_uniform"
+			hn.init_scale = 0.9 + love.math.random() * 0.4
+		end
 		hn.init_ignore_bias = love.math.random() < 0.5
+		hn.activation = love.math.random() < 0.5
+			and network.activate.tanh
+			or network.activate.lrelu
 		--generate new input
-
+		hn.input_generator_spec = generate_spec_base()
 		--generate new net
 		hn:init()
 		--start as normal
@@ -463,7 +569,7 @@ return function(w, h)
 	hallucinet_ui:resize(w, h)
 
 	--set up actual hallucinet
-	hallucinet_ui.hallucinet = hallucinet:new()
+	hallucinet_ui.hallucinet = hallucinet:new(generate_spec_base())
 	hallucinet_ui.hallucinet:init()
 
 	return hallucinet_ui
