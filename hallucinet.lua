@@ -102,15 +102,6 @@ x += shape_amount_curve * cos(s_y * PI * 0.5);
 x += shape_amount_diamond * (abs(s_x) + abs(s_y));
 x += shape_amount_square * max(abs(s_x), abs(s_y));
 x += shape_amount_circle * d;
-x /= max(
-	1.0,
-	abs(shape_amount_gradient) +
-	abs(shape_amount_wedge) +
-	abs(shape_amount_curve) +
-	abs(shape_amount_diamond) +
-	abs(shape_amount_square) +
-	abs(shape_amount_circle)
-);
 
 //fade in/out range
 float fade_var = mix(
@@ -565,9 +556,6 @@ end
 function hallucinet:draw(t)
 	local cv = self.frames[1]
 	if self.mode == "static" then
-		if not self.done then
-			love.graphics.setColor(1,1,1,0.5)
-		end
 		t = t / self.static_duration
 		t = t % 1
 		local f = math.max(1, math.min(self:frame_count(), math.floor(1 + t * self:frame_count())))
@@ -581,8 +569,6 @@ function hallucinet:draw(t)
 		love.graphics.getWidth() / cv:getWidth(),
 		love.graphics.getHeight() / cv:getHeight()
 	)
-
-	love.graphics.setColor(1,1,1,1)
 
 	if love.keyboard.isDown("`") then
 		local lines

@@ -222,6 +222,9 @@ end
 --todo: collapse/expand children, neighbours
 
 function ui_base:hide(hidden)
+	if hidden == nil then
+		hidden = true
+	end
 	self.hidden = hidden
 	self:dirty()
 end

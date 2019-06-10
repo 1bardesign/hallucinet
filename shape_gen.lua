@@ -102,6 +102,7 @@ end
 
 function shape_gen_anim_spins(t, spins)
 	t[2][24] = spins
+	return t
 end
 
 function shape_gen_transform(t, ox, oy, r, sx, sy)
@@ -131,40 +132,47 @@ function shape_gen_random_pattern(t)
 end
 
 function shape_gen_random_shape(t)
+	local _gt = love.math.random(0, 6)
+	local function _pr(_gt, tg)
+		return (_gt == tg or (_gt == 0 and love.math.random() < 0.5))
+	end
+	local function _random_amount()
+		return (love.math.random() < 0.5 and -1 or 1)
+	end
 	shape_gen_set_gradient(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 1)
+			and _random_amount()
 			or 0.0
 	)
 	shape_gen_set_wedge(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 2)
+			and _random_amount()
 			or 0.0
 	)
 	shape_gen_set_curve(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 3)
+			and _random_amount()
 			or 0.0
 	)
 	shape_gen_set_diamond(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 4)
+			and _random_amount()
 			or 0.0
 	)
 	shape_gen_set_square(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 5)
+			and _random_amount()
 			or 0.0
 	)
 	shape_gen_set_circle(
 		t,
-		love.math.random() < 0.5
-			and love.math.random() * 2 - 1
+		_pr(_gt, 6)
+			and _random_amount()
 			or 0.0
 	)
 	return t
