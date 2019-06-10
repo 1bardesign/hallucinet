@@ -89,7 +89,7 @@ anim_var += anim_amount_sqsin * (st * st * sign(st) * 0.5);
 anim_var += anim_amount_bounce * (abs(st) * 0.5);
 anim_var += anim_amount_sqbounce * (st * st * 0.5);
 anim_var += anim_amount_hesitant * (t + st * 0.2);
-anim_var += anim_amount_tri * (triangle(t));
+anim_var += anim_amount_tri * (triangle(t * 2.0));
 
 float d = length(vec2(s_x, s_y));
 

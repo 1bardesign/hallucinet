@@ -657,19 +657,19 @@ return function(w, h)
 
 	add_popup_tray("about")
 		:add_children({
-			ui.text:new(nil, "created by 1bardesign", tutorial_width, "center"),
+			ui.text:new(nil, "Created by 1bardesign", tutorial_width, "center"),
 			ui.row:new():add_children({
-				ui.button:new("updates on itch", (tutorial_width / 3), 32, function()
+				ui.button:new("Updates on itch", (tutorial_width / 3), 32, function()
 					love.system.openURL("https://1bardesign.itch.io/hallucinet")
 				end),
-				ui.button:new("twitter", (tutorial_width / 3), 32, function()
+				ui.button:new("Twitter", (tutorial_width / 3), 32, function()
 					love.system.openURL("https://twitter.com/1bardesign")
 				end),
-				ui.button:new("about love2d", (tutorial_width / 3), 32, function()
+				ui.button:new("About LÖVE", (tutorial_width / 3), 32, function()
 					love.system.openURL("https://love2d.org/")
 				end),
 			}),
-			ui.text:new(nil, "info", tutorial_width, "center"),
+			ui.text:new(nil, "About Hallucinet", tutorial_width, "center"),
 			ui.row:new():add_children({
 				ui.text:new(nil, "Inspiration", 100, "left"),
 				ui.text:new(nil,
@@ -681,9 +681,9 @@ return function(w, h)
 			ui.row:new():add_children({
 				ui.text:new(nil, "Implementation", 100, "left"),
 				ui.text:new(nil,
-					"The project started in js/webGL, but I quickly felt a standalone app would be better able to do the idea justice."..
-					"Feedforward neural network code was built on top of Love2D using GLSL shaders, and "..
-					"a UI for exploring the possibility space was added.",
+					"The project started in js/webGL, but I quickly felt a standalone app would be better able to do the idea justice. "..
+					"Fairly simple feedforward neural network code was built on top of LÖVE using GLSL shaders, and "..
+					"a UI for setting render parameters and exploring the possibility space was added.",
 					tutorial_width - 100 - 30, "left"
 				),
 			}),
