@@ -104,6 +104,15 @@ function draw_9slice(atlas, x, y, w, h, pad, nocache)
 	end
 end
 
+local base_9slice = love.graphics.newImage("curved_9slice.png")
+function draw_9slice_base(x, y, w, h)
+	draw_9slice(base_9slice, x, y, w, h, 2, false)
+end
+
+function draw_rect_base(x, y, w, h)
+	love.graphics.rectangle("fill", x, y, w, h)
+end
+
 --ui base node element
 local ui_base = {}
 ui.base = ui_base
@@ -120,10 +129,10 @@ function ui_base:new()
 		position = "relative", --"relative" | "absolute"
 		size = "fixed",        --"fixed" | "adaptive"
 		col = {
-			fg = {1, 1, 1, 1},
+			fg =       {1, 1, 1, 1},
 			fg_hover = {1, 1, 1, 1},
-			bg = {0, 0, 0, 0.75},
-			bg_hover = {0, 0, 0, 0.75},
+			bg =       {0.15, 0.15, 0.15, 1},
+			bg_hover = {0.15, 0.15, 0.15, 1},
 		},
 		hidden = false,
 		visible = {
@@ -147,6 +156,8 @@ function ui_base:new()
 		noclip = false,
 		is_hovered = false,
 		is_dirty = true,
+		--override friendly rect rendering function
+		rect_fn = draw_9slice_base,
 	}, ui_base._mt)
 end
 
@@ -275,12 +286,28 @@ function ui_base:remove()
 end
 
 --chainable modifiers
+function ui_base:set_width(w)
+	self.w = w
+	return self:dirty()
+end
+
+function ui_base:set_height(h)
+	self.h = h
+	return self:dirty()
+end
+
+function ui_base:set_size(w, h)
+	self.w = w
+	self.h = h
+	return self:dirty()
+end
+
 function ui_base:set_padding(name, p)
 	if self.padding[name] == nil then
 		error("attempt to set bogus padding "..name)
 	end
 	self.padding[name] = p
-	return self
+	return self:dirty()
 end
 
 function ui_base:set_colour(name, r, g, b, a)
@@ -379,7 +406,7 @@ end
 
 --drawing
 function ui_base:draw_background()
-	love.graphics.rectangle("fill", 0, 0, self.w, self.h)
+	self.rect_fn(0, 0, self.w, self.h)
 end
 
 function ui_base:draw_children()
@@ -596,7 +623,8 @@ function ui_button:new(asset_or_text, w, h, callback, key)
 	end
 	self.w, self.h = w, h
 
-	self.col.bg_hover = {0, 0, 0, 1.0}
+	self.col.bg       = {0.1, 0.1, 0.1, 1}
+	self.col.bg_hover = {0.2, 0.2, 0.2, 1}
 
 	self.onclick = callback
 	if key ~= nil then
@@ -644,6 +672,7 @@ function ui_text:new(font, t, w, align)
 	self.set_w = w
 	self.align = align or "center"
 	self.ui_text = love.graphics.newText(font, nil)
+	self.visible.bg = false
 
 	return self:set_text(t, w, align)
 end

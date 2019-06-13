@@ -242,13 +242,13 @@ return function(w, h)
 
 	-- go button
 	right_side_tray:add_children({
-		ui.button:new("new net", 64, 64, function()
+		ui.button:new("New\nNet", 64, 64, function()
 			hallucinet_ui:new_net()
 		end),
-		ui.button:new("new input", 64, 64, function()
+		ui.button:new("New\nInput", 64, 64, function()
 			hallucinet_ui:new_input()
 		end),
-		ui.button:new("surprise me", 64, 64, function()
+		ui.button:new("Surprise\nMe!", 64, 64, function()
 			hallucinet_ui:new_net()
 			hallucinet_ui:new_input()
 		end),
@@ -311,61 +311,71 @@ return function(w, h)
 	end
 
 	-- rendering quality/etc settings
+	local static_option_width = 42
+	local static_option_height = 26
+	local static_option_text_width = text_width_for_buttons(3)
+	local function option_header_text(t)
+		return ui.text:new(nil, t, static_option_text_width, "center")
+			:set_padding("v", 10)
+			:set_height(static_option_height + 2)
+	end
+
+	--todo: move these to separate trays probably!
 	local rendering_trays = {
 		ui.col:new():add_children({
-			ui.text:new(nil, "framerate", text_width_for_buttons(3), "center"),
+			option_header_text("Frame Rate"),
 			ui.row:new():add_children({
-				ui.button:new("10", 32, 32, function()
+				ui.button:new("10", 32, static_option_height, function()
 					_set_static_fps(10)
 				end),
-				ui.button:new("15", 32, 32, function()
+				ui.button:new("15", 32, static_option_height, function()
 					_set_static_fps(15)
 				end),
-				ui.button:new("20", 36, 32, function()
+				ui.button:new("20", 36, static_option_height, function()
 					_set_static_fps(20)
 				end),
-				ui.button:new("30", 36, 32, function()
+				ui.button:new("30", 36, static_option_height, function()
 					_set_static_fps(30)
 				end),
-				ui.button:new("60", 36, 32, function()
+				ui.button:new("60", 36, static_option_height, function()
 					_set_static_fps(60)
 				end),
 			}),
-			ui.text:new(nil, "duration", text_width_for_buttons(3), "center"),
+			option_header_text("Duration"),
 			ui.row:new():add_children({
-				ui.button:new("3 s", 32, 32, function()
+				ui.button:new("3 s", 32, static_option_height, function()
 					_set_duration(3)
 				end),
-				ui.button:new("5 s", 32, 32, function()
+				ui.button:new("5 s", 32, static_option_height, function()
 					_set_duration(5)
 				end),
-				ui.button:new("10 s", 36, 32, function()
+				ui.button:new("10 s", 36, static_option_height, function()
 					_set_duration(10)
 				end),
-				ui.button:new("20 s", 36, 32, function()
+				ui.button:new("20 s", 36, static_option_height, function()
 					_set_duration(20)
 				end),
-				ui.button:new("30 s", 36, 32, function()
+				ui.button:new("30 s", 36, static_option_height, function()
 					_set_duration(30)
 				end),
 			}),
 		}),
 		ui.col:new():add_children({
-			ui.text:new(nil, "duration in frames", text_width_for_buttons(3), "center"),
+			option_header_text("Duration in Frames"),
 			ui.row:new():add_children({
-				ui.button:new("50", 32, 32, function()
+				ui.button:new("50", 32, static_option_height, function()
 					_set_dynamic_dt(1/50)
 				end),
-				ui.button:new("100", 32, 32, function()
+				ui.button:new("100", 32, static_option_height, function()
 					_set_dynamic_dt(1/100)
 				end),
-				ui.button:new("250", 36, 32, function()
+				ui.button:new("250", 36, static_option_height, function()
 					_set_dynamic_dt(1/250)
 				end),
-				ui.button:new("500", 36, 32, function()
+				ui.button:new("500", 36, static_option_height, function()
 					_set_dynamic_dt(1/500)
 				end),
-				ui.button:new("1000", 36, 32, function()
+				ui.button:new("1000", 36, static_option_height, function()
 					_set_dynamic_dt(1/1000)
 				end),
 			}),
@@ -383,61 +393,62 @@ return function(w, h)
 		hallucinet_ui.hallucinet:init_storage()
 	end
 
-	add_popup_tray("render settings")
+	add_popup_tray("Render Settings")
 		:add_children({
 			--render type
 			ui.row:new():add_children(
 			{
 				ui.col:new():add_children({
-					ui.text:new(nil, "mode", text_width_for_buttons(2), "center"),
+					ui.text:new(nil, "Render Mode", text_width_for_buttons(2), "center"),
 					ui.row:new():add_children({
-						ui.button:new("static", 64, 64, function()
+						ui.button:new("Static", 64, 64, function()
 							hallucinet_ui.hallucinet.mode = "static"
 							hallucinet_ui.hallucinet.static_fps = 15
 							hallucinet_ui.hallucinet.static_duration = 10
 							hallucinet_ui.hallucinet:init_storage()
 							_show_rendering_tray(1)
 						end),
-						ui.button:new("dynamic", 64, 64, function()
-							hallucinet_ui.hallucinet.mode = "dynamic"
-							hallucinet_ui.hallucinet.dynamic_dt_scale = 1/1000
-							hallucinet_ui.hallucinet:init_storage()
-							_show_rendering_tray(2)
-						end),
+						ui.row:new():add_children({
+							ui.button:new("Still", 64, 64, function()
+								hallucinet_ui.hallucinet.mode = "static"
+								hallucinet_ui.hallucinet.static_fps = 1
+								hallucinet_ui.hallucinet.static_duration = 0.01
+								hallucinet_ui.hallucinet:init_storage()
+								_show_rendering_tray(nil)
+							end),
+						}),
 					}),
-					ui.row:new():add_children({
-						ui.button:new("still", 64, 64, function()
-							hallucinet_ui.hallucinet.mode = "static"
-							hallucinet_ui.hallucinet.static_fps = 1
-							hallucinet_ui.hallucinet.static_duration = 0.01
-							hallucinet_ui.hallucinet:init_storage()
-							_show_rendering_tray(nil)
-						end),
-					}),
+					ui.button:new("Dynamic", 64, 64, function()
+						hallucinet_ui.hallucinet.mode = "dynamic"
+						hallucinet_ui.hallucinet.dynamic_dt_scale = 1/1000
+						hallucinet_ui.hallucinet:init_storage()
+						_show_rendering_tray(2)
+					end),
 				}),
+				--ui.button:new(nil, 32, 32):set_visible("bg", false), --pad with fake button
 				ui.col:new()
-				:add_child(ui.text:new(nil, "options", text_width_for_buttons(3), "center"))
+				:add_child(ui.text:new(nil, "Mode Options", text_width_for_buttons(3), "center"))
 				:add_children(rendering_trays),
 			}),
 			-- 	render resolution
-			ui.text:new(nil, "resolution", text_width_for_buttons(5), "center"),
+			ui.text:new(nil, "Resolution", text_width_for_buttons(5), "center"),
 			ui.row:new():add_children({
-				ui.button:new("10%", 64, 32, function()
+				ui.button:new("10%", 64, static_option_height, function()
 					_set_resolution(0.10)
 				end),
-				ui.button:new("25%", 64, 32, function()
+				ui.button:new("25%", 64, static_option_height, function()
 					_set_resolution(0.25)
 				end),
-				ui.button:new("50%", 64, 32, function()
+				ui.button:new("50%", 64, static_option_height, function()
 					_set_resolution(0.50)
 				end),
-				ui.button:new("100%", 64, 32, function()
+				ui.button:new("100%", 64, static_option_height, function()
 					_set_resolution(1.00)
 				end),
-				ui.button:new("200%", 64, 32, function()
+				ui.button:new("200%", 64, static_option_height, function()
 					_set_resolution(2.00)
 				end),
-			})
+			}),
 		})
 
 	-- --saving to disk
@@ -598,7 +609,7 @@ return function(w, h)
 
 	-- tutorial
 	local tutorial_width = 600
-	add_popup_tray("tutorial")
+	add_popup_tray("Tutorial")
 		:add_children({
 			ui.text:new(nil, "Render Settings", tutorial_width, "center"),
 			ui.row:new():add_children({
@@ -655,7 +666,7 @@ return function(w, h)
 			}),
 		})
 
-	add_popup_tray("about")
+	add_popup_tray("About")
 		:add_children({
 			ui.text:new(nil, "Created by 1bardesign", tutorial_width, "center"),
 			ui.row:new():add_children({
@@ -688,7 +699,7 @@ return function(w, h)
 				),
 			}),
 			ui.row:new():add_children({
-				ui.text:new(nil, "Still to come", 100, "left"),
+				ui.text:new(nil, "Still to Come", 100, "left"),
 				ui.text:new(nil,
 					table.concat({
 						"- Save/Load functionality",
@@ -707,15 +718,15 @@ return function(w, h)
 		})
 
 	-- fs toggle
-	fs_button = add_side_button("fullscreen", function (self)
+	fs_button = add_side_button("Fullscreen", function (self)
 		local fs = love.window.getFullscreen()
 		love.window.setFullscreen(not fs , "desktop")
-		local nt = fs and "fullscreen" or "windowed"
+		local nt = fs and "Fullscreen" or "Windowed"
 		self.ui_button_text:setf(nt, self.w, "center")
 	end)
 
 	-- exit
-	add_side_button("quit", function()
+	add_side_button("Quit", function()
 		love.event.quit()
 	end)
 
