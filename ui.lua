@@ -10,26 +10,14 @@ local ui = {}
 
 local _9slice_patch_cache = {}
 local _9slice_patch_cache_size = 30
-function draw_9slice(atlas, x, y, w, h, nocache)
-	--sanitise+check inputs
-	if not atlas then
-
-	end
-
-	x = math.floor(x)
-	y = math.floor(y)
-	if w < 0 then
-		return draw_9slice(atlas, x+w, y, -w, h)
-	elseif h < 0 then
-		return draw_9slice(atlas, x, y+h, w, -h)
-	end
-
-	--figure out dimensions
+local function _get_9slice_patch(atlas, w, h, nocache)
+	--get some dimensions dimensions
 	local aw, ah = atlas:getDimensions()
 
 	local cw = math.floor(math.min(w, aw) * 0.5)
 	local ch = math.floor(math.min(h, ah) * 0.5)
 
+	--pull out of cache if we have it
 	local cache_id = table.concat({tostring(atlas), w, h}, "_")
 	local cached_patch = _9slice_patch_cache[cache_id]
 	if not cached_patch then
@@ -76,8 +64,33 @@ function draw_9slice(atlas, x, y, w, h, nocache)
 			end
 		end
 	end
+	return cached_patch
+end
 
-	local _q, patch_pattern = unpack(cached_patch)
+function draw_9slice(atlas, x, y, w, h, pad, nocache)
+	--sanitise+check inputs
+	if not atlas then
+		error("missing atlas for 9slice draw")
+	end
+
+	x = math.floor(x)
+	y = math.floor(y)
+	if w < 0 then
+		return draw_9slice(atlas, x+w, y, -w, h, pad, nocache)
+	elseif h < 0 then
+		return draw_9slice(atlas, x, y+h, w, -h, pad, nocache)
+	end
+
+	--pad dimensions
+	if pad and pad > 0 then
+		x = x - pad
+		y = y - pad
+		w = w + pad * 2
+		h = h + pad * 2
+	end
+
+	--get the patch
+	local _q, patch_pattern = unpack(_get_9slice_patch(atlas, w, h, nocache))
 	--render patches
 	for i,v in ipairs(patch_pattern) do
 		local ox, oy, u, v, uw, uh, sx, sy = unpack(v)
