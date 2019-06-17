@@ -1,7 +1,7 @@
-local network = require("nn_gpu")
+local network = require("src.nn_gpu")
 local ffi = require("ffi")
-require("splat")
-require("shape_gen")
+require("src.splat")
+require("src.shape_gen")
 
 local input_template = [[
 extern float time_scale;
@@ -328,6 +328,13 @@ function hallucinet:init()
 end
 
 function hallucinet:init_storage()
+	--release any old frames
+	if self.frames then
+		for i,v in ipairs(self.frames) do
+			v:release()
+		end
+	end
+	--rebuild everything
 	self.frames = {}
 	self.current_iteration = 0
 	self.rendered = 0

@@ -80,6 +80,8 @@ function draw_9slice(atlas, x, y, w, h, pad, nocache)
 	elseif h < 0 then
 		return draw_9slice(atlas, x, y+h, w, -h, pad, nocache)
 	end
+	w = math.ceil(w)
+	h = math.ceil(h)
 
 	--pad dimensions
 	if pad and pad > 0 then
@@ -104,9 +106,9 @@ function draw_9slice(atlas, x, y, w, h, pad, nocache)
 	end
 end
 
-local base_9slice = love.graphics.newImage("curved_9slice.png")
+ui.base_9slice = love.graphics.newImage("assets/curved_9slice.png")
 function draw_9slice_base(x, y, w, h)
-	draw_9slice(base_9slice, x, y, w, h, 2, false)
+	draw_9slice(ui.base_9slice, x, y, w, h, 2, false)
 end
 
 function draw_rect_base(x, y, w, h)
@@ -389,7 +391,7 @@ function ui_base:pos()
 		y = y - self.h
 	end
 
-	return x, y
+	return math.floor(x), math.floor(y)
 end
 
 function ui_base:pos_absolute()

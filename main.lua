@@ -6,7 +6,7 @@ function love.load()
 	local font = love.graphics.getFont()
 
 	--build ui
-	ui = require("hallucinet_ui")(love.graphics.getDimensions())
+	ui = require("src.hallucinet_ui")(love.graphics.getDimensions())
 end
 
 function love.resize(w, h)

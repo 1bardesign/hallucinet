@@ -1,10 +1,17 @@
 --[[
 	hallucinet specific ui
 ]]
-local ui = require("ui")
-local network = require("nn_gpu")
-local hallucinet = require("hallucinet")
-require("shape_gen")
+local ui = require("src.ui")
+local network = require("src.nn_gpu")
+local hallucinet = require("src.hallucinet")
+require("src.shape_gen")
+local create_textured_9slice_f = require("src.draw_textured_9slice")
+
+local function new_textured_button(asset_or_text, w, h, callback, key)
+	local b =  ui.button:new(asset_or_text, w, h, callback, key)
+	b.rect_fn = create_textured_9slice_f(ui.base_9slice)
+	return b
+end
 
 return function(w, h)
 
@@ -21,6 +28,9 @@ return function(w, h)
 	local _init_specific = {
 
 	}
+
+	local base_font = love.graphics.getFont()
+	local heading_font = love.graphics.newFont(16)
 
 	--various "special" buttons etc
 	local fs_button
@@ -242,13 +252,13 @@ return function(w, h)
 
 	-- go button
 	right_side_tray:add_children({
-		ui.button:new("New\nNet", 64, 64, function()
+		new_textured_button("New\nNet", 64, 64, function()
 			hallucinet_ui:new_net()
 		end),
-		ui.button:new("New\nInput", 64, 64, function()
+		new_textured_button("New\nInput", 64, 64, function()
 			hallucinet_ui:new_input()
 		end),
-		ui.button:new("Surprise\nMe!", 64, 64, function()
+		new_textured_button("Surprise\nMe!", 64, 64, function()
 			hallucinet_ui:new_net()
 			hallucinet_ui:new_input()
 		end),
@@ -264,7 +274,7 @@ return function(w, h)
 
 	--gather all the side tray definitions into here
 	function add_side_button(asset, f)
-		local b = ui.button:new(asset, 64, 64, function(self)
+		local b = new_textured_button(asset, 64, 64, function(self)
 			self:hide_children(false, true)
 			f(self)
 		end)
@@ -281,7 +291,7 @@ return function(w, h)
 		table.insert(hallucinet_ui.centre_elements, t)
 		if buttons then
 			for i,v in ipairs(buttons) do
-				row:add_child(ui.button:new(v[1], 64, 64, v[2]))
+				row:add_child(new_textured_button(v[1], 64, 64, v[2]))
 			end
 		end
 		b:add_child(t)
@@ -315,7 +325,7 @@ return function(w, h)
 	local static_option_height = 26
 	local static_option_text_width = text_width_for_buttons(3)
 	local function option_header_text(t)
-		return ui.text:new(nil, t, static_option_text_width, "center")
+		return ui.text:new(base_font, t, static_option_text_width, "center")
 			:set_padding("v", 10)
 			:set_height(static_option_height + 2)
 	end
@@ -399,7 +409,7 @@ return function(w, h)
 			ui.row:new():add_children(
 			{
 				ui.col:new():add_children({
-					ui.text:new(nil, "Render Mode", text_width_for_buttons(2), "center"),
+					ui.text:new(base_font, "Render Mode", text_width_for_buttons(2), "center"),
 					ui.row:new():add_children({
 						ui.button:new("Static", 64, 64, function()
 							hallucinet_ui.hallucinet.mode = "static"
@@ -427,11 +437,11 @@ return function(w, h)
 				}),
 				--ui.button:new(nil, 32, 32):set_visible("bg", false), --pad with fake button
 				ui.col:new()
-				:add_child(ui.text:new(nil, "Mode Options", text_width_for_buttons(3), "center"))
+				:add_child(ui.text:new(base_font, "Mode Options", text_width_for_buttons(3), "center"))
 				:add_children(rendering_trays),
 			}),
 			-- 	render resolution
-			ui.text:new(nil, "Resolution", text_width_for_buttons(5), "center"),
+			ui.text:new(base_font, "Resolution", text_width_for_buttons(5), "center"),
 			ui.row:new():add_children({
 				ui.button:new("10%", 64, static_option_height, function()
 					_set_resolution(0.10)
@@ -454,14 +464,14 @@ return function(w, h)
 	-- --saving to disk
 	-- add_popup_tray("i/o")
 	-- 	:add_children({
-	-- 		ui.text:new(nil, "config", text_width_for_buttons(2), "center"),
+	-- 		ui.text:new(base_font, "config", text_width_for_buttons(2), "center"),
 	-- 		ui.row:new():add_children({
 	-- 			ui.button:new("save", 64, 64, function()
 	-- 			end),
 	-- 			ui.button:new("load", 64, 64, function()
 	-- 			end),
 	-- 		}),
-	-- 		ui.text:new(nil, "frames", text_width_for_buttons(2), "center"),
+	-- 		ui.text:new(base_font, "frames", text_width_for_buttons(2), "center"),
 	-- 		ui.row:new():add_children({
 	-- 			ui.button:new("save", 64, 64, function()
 	-- 			end),
@@ -548,7 +558,7 @@ return function(w, h)
 	-- 	-- 	plain: rgb/hsv
 	-- 	:add_child(ui.col:new()
 	-- 		:add_children({
-	-- 			ui.text:new(nil, "modify", text_width_for_buttons(4)),
+	-- 			ui.text:new(base_font, "modify", text_width_for_buttons(4)),
 	-- 			ui.row:new():add_children({
 	-- 				ui.button:new("random", 64, 64, function()
 	-- 				end),
@@ -557,7 +567,7 @@ return function(w, h)
 	-- 				ui.button:new("revert", 64, 64, function()
 	-- 				end),
 	-- 			}),
-	-- 			ui.text:new(nil, "shape", text_width_for_buttons(4)),
+	-- 			ui.text:new(base_font, "shape", text_width_for_buttons(4)),
 	-- 			ui.row:new():add_children({
 	-- 				ui.button:new("width", 64, 64, function()
 	-- 				end),
@@ -566,7 +576,7 @@ return function(w, h)
 	-- 				ui.button:new("arity", 64, 64, function()
 	-- 				end),
 	-- 			}),
-	-- 			ui.text:new(nil, "init parameters", text_width_for_buttons(4)),
+	-- 			ui.text:new(base_font, "init parameters", text_width_for_buttons(4)),
 	-- 			ui.row:new():add_children({
 	-- 				ui.button:new("type", 64, 64, function()
 	-- 				end),
@@ -608,113 +618,120 @@ return function(w, h)
 	-- 	everything
 
 	-- tutorial
-	local tutorial_width = 600
+	local tutorial_width = 796
+	local function _tut_heading(t)
+		return ui.text:new(heading_font, t, tutorial_width, "center")
+			:set_visible("bg", true)
+			:set_colour("bg", 0.1, 0.1, 0.1, 1.0)
+			:set_colour("bg_hover", 0.1, 0.1, 0.1, 1.0)
+	end
+	local tut_col_w = tutorial_width / 3 - 20
+	local function _col_tab(t, b)
+		if t then t = ui.text:new(base_font, t, tut_col_w, "center"):set_padding("before", 0.5):set_height(16) end
+		if b then b = ui.text:new(base_font, b, tut_col_w, "left") end
+		local kids = t and {t, b} or {b}
+		return ui.col:new():add_children(kids)
+	end
+
 	add_popup_tray("Tutorial")
 		:add_children({
-			ui.text:new(nil, "Render Settings", tutorial_width, "center"),
-			ui.row:new():add_children({
-				ui.text:new(nil, "Static Mode", 100, "left"),
-				ui.text:new(nil,
-					"Renders out all frames of a set framerate + duration animation ahead of time. this means it requires more memory for longer animations, but animates as smoothly as possible once it's done",
-					tutorial_width - 100 - 30, "left"
-				),
-			}),
-			ui.row:new():add_children({
-				ui.text:new(nil, "Dynamic Mode", 100, "left"),
-				ui.text:new(nil,
-					"Renders out a frame at a time, with a set time-step between frames. has a constant memory footprint. generally only good for very slow animations, very low resolutions, or very powerful machines",
-					tutorial_width - 100 - 30, "left"
-				),
-			}),
-			ui.row:new():add_children({
-				ui.text:new(nil, "Still Mode", 100, "left"),
-				ui.text:new(nil,
-					"Renders a still image - useful to get a good quick idea of the overall \"look\" of a setup, but does not animate at all",
-					tutorial_width - 100 - 30, "left"
-				),
-			}),
-			ui.text:new(nil, "Lower resolution will lead to faster renders at the expense of visual quality - can be useful for quickly exploring lots of different variations", tutorial_width, "left"),
+			_tut_heading("Render Settings"),
 
-			ui.text:new(nil, "Generation Options", tutorial_width, "center"),
-			ui.row:new():add_children({
-				ui.text:new(nil, "New Net", 100, "left"),
-				ui.text:new(nil,
-					"Generate a new network to process this input - changes the colours and texture of the image",
-					tutorial_width - 100 - 30, "left"
-				),
+			ui.col:new():add_children({
+				ui.row:new():add_children({
+					_col_tab(
+						"Static Mode",
+						"Renders out all frames of a set framerate + duration animation ahead of time. this means it requires more memory for longer animations, but animates as smoothly as possible once it's done."
+					),
+					_col_tab(
+						"Dynamic Mode",
+						"Renders out a frame at a time, with a set time-step between frames. has a constant memory footprint. generally only good for very slow animations, very low resolutions, or very powerful machines."
+					),
+					_col_tab(
+						"Still Mode",
+						"Renders a still image - useful to get a good quick idea of the overall \"look\" of a setup, but does not animate at all."
+					),
+				}),
+				ui.text:new(base_font, "Lower resolution will lead to faster renders at the expense of visual quality - this can be useful for quickly \"exploring\".", tutorial_width, "center"),
 			}),
+
+			_tut_heading("Generation Options"),
 			ui.row:new():add_children({
-				ui.text:new(nil, "New Input", 100, "left"),
-				ui.text:new(nil,
-					"Generate a new input to feed to this network - changes the overall shape and animation, without changing the colour palette or amount of texture",
-					tutorial_width - 100 - 30, "left"
+				_col_tab(
+					"New Net",
+					"Generate a new network to process this input - changes the colours and texture of the image."
 				),
-			}),
-			ui.row:new():add_children({
-				ui.text:new(nil, "Surprise Me", 100, "left"),
-				ui.text:new(nil,
-					"Generate a new net and input combo, for a totally new image",
-					tutorial_width - 100 - 30, "left"
+				_col_tab(
+					"New Input",
+					"Generate a new input to feed to this network - changes the overall shape and animation, without changing the colour palette or amount of texture."
+				),
+				_col_tab(
+					"Surprise Me",
+					"Generate a new net and input combo, for a totally new image."
 				),
 			}),
 
-			ui.text:new(nil, "Tips", tutorial_width, "center"),
+			_tut_heading("Tips"),
 			ui.row:new():add_children({
-				ui.text:new(nil, "Click outside the ui to collapse menus, or toggle the ui completely and get a better look at your hallucination!", tutorial_width / 3 - 20, "left"),
-				ui.text:new(nil, "Final resolution is set by the window mode at the start of rendering - fullscreen first and then render for highest render quality", tutorial_width / 3 - 20, "left"),
-				ui.text:new(nil, "Static/still mode don't use much gpu power once they're finished rendering, so they are probably more suitable if you're on battery!", tutorial_width / 3 - 20, "left"),
+				_col_tab(nil, "Click outside the ui to collapse menus, or toggle the ui completely and get a better look at your hallucination!"),
+				_col_tab(nil, "Final resolution is set by the window mode at the start of rendering - fullscreen first and then render for highest render quality."),
+				_col_tab(nil, "Static/still mode don't use much gpu power once they're finished rendering, so they are probably more suitable if you're on battery."),
 			}),
 		})
 
+	local about_width = 600
 	add_popup_tray("About")
 		:add_children({
-			ui.text:new(nil, "Created by 1bardesign", tutorial_width, "center"),
+			ui.text:new(heading_font, "Created by 1BarDesign", about_width, "center"),
 			ui.row:new():add_children({
-				ui.button:new("Updates on itch", (tutorial_width / 3), 32, function()
+				ui.button:new("Updates on itch", (about_width / 3), 32, function()
 					love.system.openURL("https://1bardesign.itch.io/hallucinet")
 				end),
-				ui.button:new("Twitter", (tutorial_width / 3), 32, function()
+				ui.button:new("Twitter", (about_width / 3), 32, function()
 					love.system.openURL("https://twitter.com/1bardesign")
 				end),
-				ui.button:new("About LÖVE", (tutorial_width / 3), 32, function()
+				ui.button:new("About LÖVE", (about_width / 3), 32, function()
 					love.system.openURL("https://love2d.org/")
 				end),
 			}),
-			ui.text:new(nil, "About Hallucinet", tutorial_width, "center"),
+
+			ui.text:new(heading_font, "About Hallucinet", about_width, "center"),
+
 			ui.row:new():add_children({
-				ui.text:new(nil, "Inspiration", 100, "left"),
-				ui.text:new(nil,
-					"Hallucinet was inspired by Tuan Le's work on generating still images with randomly initialised neural nets. "..
-					"Inspiration was also taken from Inigo Quilez's techniques for analytical geometry in shaders.",
-					tutorial_width - 100 - 30, "left"
+				ui.text:new(base_font, "Inspiration", 100, "left"),
+				ui.text:new(base_font,
+					"Hallucinet was inspired by Tuan Le's work on generating still images with randomly initialised neural nets, "..
+					"the Electric Sheep project, the shadertoy community, and the wider demoscene.",
+					about_width - 100 - 30, "left"
 				),
 			}),
 			ui.row:new():add_children({
-				ui.text:new(nil, "Implementation", 100, "left"),
-				ui.text:new(nil,
-					"The project started in js/webGL, but I quickly felt a standalone app would be better able to do the idea justice. "..
+				ui.text:new(base_font, "Implementation", 100, "left"),
+				ui.text:new(base_font,
+					"The project started its life as a browser app, but I quickly felt a standalone application would be better able to do the idea justice. "..
 					"Fairly simple feedforward neural network code was built on top of LÖVE using GLSL shaders, and "..
 					"a UI for setting render parameters and exploring the possibility space was added.",
-					tutorial_width - 100 - 30, "left"
+					about_width - 100 - 30, "left"
 				),
 			}),
 			ui.row:new():add_children({
-				ui.text:new(nil, "Still to Come", 100, "left"),
-				ui.text:new(nil,
+				ui.text:new(base_font, "Still to Come", 100, "left"),
+				ui.text:new(base_font,
 					table.concat({
-						"- Save/Load functionality",
+						"- Network Save/Load functionality",
 						"- Custom colour map modes (additive colour channels, gradient maps)",
-						"- Partial Net/Input Modifications",
+						"- Partial Net/Input Modifications (for exploring \"similar\" parameters)",
 						"- Network Weight Editor",
 						"- Real supersampling (better quality with lower memory requirements)",
-						"- Streaming to/from disk (longer animations possible)",
+						"- Streaming frames to/from disk (longer animations possible)",
 						"- More Optimisation",
-						"",
-						"Get in touch if there's any features that would be useful to you!",
 					}, "\n"),
-					tutorial_width - 100 - 30, "left"
+					about_width - 100 - 30, "left"
 				),
 			}),
+			ui.button:new("Feedback Form - Leave your Thoughts, Feature Requests, and Bug Reports here!", about_width + 20, 32, function()
+				love.system.openURL("https://forms.gle/hDU4227UYpoJUyvs9")
+			end),
 		})
 
 	-- fs toggle

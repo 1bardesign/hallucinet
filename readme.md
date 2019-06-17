@@ -6,6 +6,36 @@ Hallucinet is a visual toy utilising neural nets to generate pretty pictures and
 
 Networks and inputs can be generated and modifed interactively, and random configurations can be explored.
 
+# Accessibility
+
+Hallucinet can produce intense, flashing visuals. Photosensitive individuals please proceed with caution!
+
+# Requirements and Installation
+
+**Windows:**
+
+- Only tested on Windows 10
+- Get the .zip version
+- Extract somewhere
+- Run the exe
+
+**Linux/MacOS:**
+
+- Get the .love Version
+- LÖVE 11+ Locally Installed
+- Run the .love file with LÖVE
+- YMMV
+
+**Everyone:**
+
+- Up to date graphics drivers.
+- GPU with at least 1GB of effective VRAM - running with less is possible but will severely limit the length of animation.
+	2GB and up is recommended, faster/newer GPUs will do a better job of the heavy workload.
+
+# Feedback
+
+Feedback is welcome [here](https://forms.gle/hDU4227UYpoJUyvs9).
+
 # Authorship
 
 Hallucinet is the work of [1BarDesign](http://1bardesign.com/).

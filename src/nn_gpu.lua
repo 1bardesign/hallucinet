@@ -4,8 +4,8 @@
 	gpu-only implementation
 ]]
 
-local json = require("json")
-local read_float_texture = require("read_float_texture")
+local json = require("lib.json")
+local read_float_texture = require("src.read_float_texture")
 
 -------------------------------------------------------------------------------
 --shared utility

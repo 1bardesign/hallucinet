@@ -12,12 +12,12 @@ function love.conf(t)
 	t.window.title = name 	       		      -- The window title (string)
 	t.window.icon = nil  -- Filepath to an image to use as the window's icon (string)
 
-	t.window.width = 1280                     -- The window width (number)
-	t.window.height = 720                     -- The window height (number)
+	t.window.width = 1024                     -- The window width (number)
+	t.window.height = 576                     -- The window height (number)
 
 	t.window.resizable = true                 -- Let the window be user-resizable (boolean)
-	t.window.minwidth = 960                   -- Minimum window width if the window is resizable (number)
-	t.window.minheight = 540                  -- Minimum window height if the window is resizable (number)
+	t.window.minwidth = 1024                  -- Minimum window width if the window is resizable (number)
+	t.window.minheight = 576                  -- Minimum window height if the window is resizable (number)
 	t.window.borderless = false               -- Remove all border visuals from the window (boolean)
 
 	t.window.fullscreen = false               -- Enable fullscreen (boolean)
