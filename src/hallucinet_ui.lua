@@ -20,14 +20,9 @@ return function(w, h)
 	--allocate the container
 	hallucinet_ui.container = ui.container:new()
 
-	--the things we need to watch for restarting nets
-	local _net_specific = {
-
-	}
-
-	local _init_specific = {
-
-	}
+	--todo: the parameters we need to watch for restarting/reinitialising nets
+	local _net_specific = {}
+	local _init_specific = {}
 
 	local base_font = love.graphics.getFont()
 	local heading_font = love.graphics.newFont(16)
@@ -35,29 +30,74 @@ return function(w, h)
 	--various "special" buttons etc
 	local fs_button
 
-	--various callbacks
+	--
+	local started = false
+	local title_blend = 1.0
+	function hallucinet_ui:start()
+		started = true
+	end
 
+	--various callbacks
 	local hidden = false
 	function hallucinet_ui:toggle_hide()
 		hidden = not hidden
 	end
 
 	--per-frame
-
 	function hallucinet_ui:update(dt)
+		if not started then
+			local tb = self.title_button
+			tb.bg_v = math.min(tb.bg_v_max, tb.bg_v + dt)
+			tb:set_colours(tb.bg_v)
+		else
+			title_blend = math.max(0, title_blend - dt * 3.0)
+		end
 		self.hallucinet:update(1/100)
 	end
 
 	function hallucinet_ui:draw()
-		self.hallucinet:draw(love.timer.getTime())
-		if not hidden then
-			self.container:layout():draw()
+		--cross blend amounts
+		local pre_blend = title_blend
+		local after_blend = 1.0 - pre_blend
+
+		local pre_col = self.title_button.bg_v * 0.3
+		local after_col = 0.5
+
+		--clear
+		love.graphics.clear(
+			(title_blend * pre_col) + (after_blend * after_col),
+			(title_blend * pre_col) + (after_blend * after_col),
+			(title_blend * pre_col) + (after_blend * after_col),
+			0
+		)
+
+		--draw title
+		if pre_blend > 0 then
+			love.graphics.setColor(1, 1, 1, pre_blend)
+			hallucinet_ui.title:layout():draw()
+		end
+
+		--draw hnet and gfx
+		if after_blend > 0 then
+			love.graphics.setColor(1, 1, 1, after_blend)
+			self.hallucinet:draw(love.timer.getTime())
+			if not hidden then
+				love.graphics.setColor(1, 1, 1, after_blend)
+				self.container:layout():draw()
+			end
 		end
 	end
 
 	--events
 
 	function hallucinet_ui:pointer(event, x, y)
+		if not started then
+			if event == "click" then
+				self:start()
+				--self.title:pointer(event, x, y) --do we need anything passed along?..
+			end
+			return
+		end
 		if not hidden then
 			if not self.container:pointer(event, x, y) then
 				--missed everything click?
@@ -101,6 +141,11 @@ return function(w, h)
 	end
 
 	function hallucinet_ui:key(event, k)
+		if not started then
+			self.title:key(event, k)
+			return
+		end
+
 		if not hidden then
 			self.container:key(event, k)
 		end
@@ -113,6 +158,54 @@ return function(w, h)
 				fs_button:onclick()
 			end
 		end
+	end
+
+
+	do
+		local text_extra = 100
+		local text_w = 334 + text_extra
+		local text_total_pad = 40
+
+		--set up the special start button + intro message
+		local title_button = ui.button:new(love.graphics.newImage("assets/title.png"), 350, 350)
+		title_button.rect_fn = create_textured_9slice_f(ui.base_9slice, 0)
+		--
+		title_button.bg_v = 0.25
+		title_button.bg_v_max = 0.9
+		title_button.bg_v_cols = {
+			{"bg",       1.0},
+			{"bg_hover", 1.0},
+			{"fg",       1.0 / title_button.bg_v_max},
+			{"fg_hover", 1.0 / title_button.bg_v_max},
+		}
+		function title_button:set_colours(c)
+			for i,v in ipairs(self.bg_v_cols) do
+				local n, am = v[1], v[2]
+				self:set_colour(
+					n,
+					math.min(1.0, c * am),
+					math.min(1.0, c * am),
+					math.min(1.0, c * am),
+					1.0
+				)
+			end
+		end
+		title_button:set_colours(title_button.bg_v)
+		hallucinet_ui.title_button = title_button
+
+		hallucinet_ui.title = ui.tray:new(0, 0, text_w + text_total_pad, 400):add_children({
+			ui.row:new():add_children({
+				ui.button:new(nil, text_extra / 2 - 10, 0):set_visible("bg", false),
+				title_button,
+			}),
+			ui.button:new(nil, 0, 32):set_visible("bg", false),
+			ui.col:new(true):add_children({
+				ui.text:new(base_font, "Hallucinet contains some flashing visuals.\nIt is not recommended for photosensitive individuals.", text_w, "center"),
+				ui.text:new(base_font, "Click anywhere to continue.", text_w, "center"),
+			}),
+		}):set_visible("bg", false)
+		--tag as center
+		hallucinet_ui.title.centre = true
 	end
 
 	-- net handling
@@ -232,7 +325,9 @@ return function(w, h)
 	function hallucinet_ui:resize(w, h)
 		for i,v in ipairs(self.centre_elements) do
 			if v.right_side then
-				v.x = love.graphics.getWidth() - v.w
+				v.x = w - v.w
+			elseif v.center or v.centre then
+				v.x = (w - v.w) * 0.5
 			end
 			v.anchor.v = "centre"
 			v.y = h * 0.5
@@ -242,6 +337,7 @@ return function(w, h)
 
 	--vertically centred elements
 	hallucinet_ui.centre_elements = {}
+	table.insert(hallucinet_ui.centre_elements, hallucinet_ui.title)
 
 	--tray for just generating new options
 
@@ -741,6 +837,72 @@ return function(w, h)
 		local nt = fs and "Fullscreen" or "Windowed"
 		self.ui_button_text:setf(nt, self.w, "center")
 	end)
+
+	--image i/o
+	local save_width = 370
+	local save_txt_width = save_width - 20
+
+	local function do_save(just_estimate_size)
+		local hnf = hallucinet_ui.hallucinet.frames
+
+		--figure out what to render
+		local frames = hnf
+		if mode == "dynamic" or mode == "static" then
+			frames = {frames[1]}
+		end
+
+		--get the filename header
+		local now = os.date("*t")
+		now = string.format("%d-%02d-%02d %02d-%02d-%02d", now.year, now.month, now.day, now.hour, now.min, now.sec)
+
+		local size = 0
+
+		for i,v in ipairs(frames) do
+			if just_estimate_size then
+				local bytes_per_pixel_estimate = 0.5; --post-compression
+				local size_est = v:getWidth() * v:getHeight() * bytes_per_pixel_estimate;
+				size = size + size_est
+			else
+				local id = v:newImageData()
+				local fd = id:encode("png")
+				id:release() --done with image data
+
+				size = size + fd:getSize()
+				--get the filename
+				local fn = now
+				if #frames > 1 then
+					fn = string.format("%s %05d", fn, i)
+				end
+				fn = fn .. ".png"
+
+				--open + write the file
+				local f = io.open(fn, "wb")
+				if f then
+					f:write(fd:getString())
+					f:close() --done with file
+				end
+				--todo: check if we could get the string separately - seems likely?
+				fd:release() --done with file data from here
+			end
+
+		end
+
+		return size
+	end
+
+	add_popup_tray("Save")
+		:add_children({
+			ui.text:new(heading_font, "Save Images", save_txt_width, "center"),
+			ui.text:new(base_font, "You can save out single frames in still or dynamic render mode, or entire animation sets in static render mode.", save_txt_width, "center"),
+			ui.text:new(base_font, "Animations can eat a lot of disk space and take a long time to save. A single 1080p image will need 1-5 megabytes, with more detailed images being larger.\nEven the smallest static animation is 30 frames.\nYou've been warned!", save_txt_width, "center"),
+			ui.text:new(base_font, "Images are saved at their rendered resolution. When making wallpapers, be sure to go fullscreen before rendering for highest quality.", save_txt_width, "center"),
+			ui.text:new(base_font, "The files will end up wherever you ran hallucinet from, named for the date and time they were saved. Animation frames have a 5 digit numeric suffix.", save_txt_width, "center"),
+			ui.button:new("Save", save_width, 32, do_save),
+			ui.button:new("Estimate Size", save_width, 32, function(self)
+				local size = do_save(true)
+				self.ui_button_text:setf("Estimate: ~"..tostring(math.ceil(size/1e6)).."mb", self.w, "center")
+			end),
+		})
 
 	-- exit
 	add_side_button("Quit", function()

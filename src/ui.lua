@@ -423,7 +423,11 @@ function ui_base:base_draw(inner)
 		return
 	end
 
+	--cache old colour
+	local o_r, o_g, o_b, o_a = love.graphics.getColor()
+	--and old state
 	love.graphics.push()
+
 	--set up position
 	if self.position == "absolute" then
 		love.graphics.origin()
@@ -432,24 +436,25 @@ function ui_base:base_draw(inner)
 	--draw bg
 	if self.visible.bg then
 		local r, g, b, a = unpack(self.is_hovered and self.col.bg_hover or self.col.bg)
-		love.graphics.setColor(r, g, b, a)
+		love.graphics.setColor(o_r * r, o_g * g, o_b * b, o_a * a)
 		self:draw_background()
 	end
 	--draw fg
 	if self.visible.fg then
 		local r, g, b, a = unpack(self.is_hovered and self.col.fg_hover or self.col.fg)
-		love.graphics.setColor(r, g, b, a)
+		love.graphics.setColor(o_r * r, o_g * g, o_b * b, o_a * a)
 		if inner then
 			inner(self)
 		end
 	end
 	--draw children
+	--todo: figure out what's appropriate here in terms of reverting the colour?..
 	if self.visible.children then
 		self:draw_children()
 	end
 	--restore state
 	love.graphics.pop()
-	love.graphics.setColor(1,1,1,1)
+	love.graphics.setColor(o_r, o_g, o_b, o_a)
 end
 
 function ui_base:draw(inner)
@@ -616,7 +621,7 @@ function ui_button:new(asset_or_text, w, h, callback, key)
 			self.ui_button_text = love.graphics.newText(love.graphics.getFont(), nil)
 			self.ui_button_text:setf(asset_or_text, w, "center")
 		else
-			self.ui_button_asset = asset
+			self.ui_button_asset = asset_or_text
 			--take asset size if bigger
 			self.aw, self.ah = self.ui_button_asset:getDimensions()
 			w = math.max(self.aw, w or 0)
@@ -651,6 +656,7 @@ function ui_button:_draw()
 			math.floor(self.w * 0.5),
 			math.floor(self.h * 0.5),
 			0,
+			1, 1,
 			math.floor(self.aw * 0.5),
 			math.floor(self.ah * 0.5)
 		)

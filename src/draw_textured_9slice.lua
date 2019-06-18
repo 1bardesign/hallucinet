@@ -40,9 +40,12 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
 #endif
 ]])
 
-function create_textured_9slice_f(atlas)
+function create_textured_9slice_f(atlas, pad)
+	--default
+	pad = pad or 2
+
+	--get the texture
 	local img = next_tex()
-	local pad = 2
 	--random offset
 	local aw, ah = img:getDimensions()
 	local offset = {
@@ -56,8 +59,8 @@ function create_textured_9slice_f(atlas)
 		_overlay_shader:send("over_tex", img)
 		_overlay_shader:send("over_tex_size", {aw, ah})
 		_overlay_shader:send("pixel_offset", {
-			sx - pad - ox,
-			sy - pad - oy,
+			sx - pad - 1 - ox,
+			sy - pad - 1 - oy,
 		})
 		love.graphics.setShader(_overlay_shader)
 		draw_9slice(atlas, x, y, w, h, pad, false)

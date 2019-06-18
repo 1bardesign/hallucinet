@@ -563,8 +563,7 @@ end
 function hallucinet:draw(t)
 	local cv = self.frames[1]
 	if self.mode == "static" then
-		t = t / self.static_duration
-		t = t % 1
+		t = (t / self.static_duration) % 1
 		local f = math.max(1, math.min(self:frame_count(), math.floor(1 + t * self:frame_count())))
 		cv = self.frames[f]
 	end
