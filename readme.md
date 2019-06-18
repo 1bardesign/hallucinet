@@ -12,6 +12,12 @@ Hallucinet can produce intense, flashing visuals. Photosensitive individuals ple
 
 # Requirements and Installation
 
+**Everyone:**
+
+- Up to date graphics drivers.
+- GPU with at least 1GB of effective VRAM - running with less is possible but will severely limit the length of animation.
+	2GB and up is recommended, faster/newer GPUs will do a better job of the heavy workload.
+
 **Windows:**
 
 - Only tested on Windows 10
@@ -26,12 +32,6 @@ Hallucinet can produce intense, flashing visuals. Photosensitive individuals ple
 - Run the .love file with LÖVE
 - YMMV
 
-**Everyone:**
-
-- Up to date graphics drivers.
-- GPU with at least 1GB of effective VRAM - running with less is possible but will severely limit the length of animation.
-	2GB and up is recommended, faster/newer GPUs will do a better job of the heavy workload.
-
 # Feedback
 
 Feedback is welcome [here](https://forms.gle/hDU4227UYpoJUyvs9).
@@ -45,7 +45,7 @@ It was made with [LÖVE](https://love2d.org/), which is used under [their licens
 # Licensing Options
 
 - **Free (as in speech) for:**
-	- **Educational use:** dig into the code, modify it, and use it to teach or learn about colour theory, neural networks, gpus, graphics programming, or whatever floats your boat.
+	- **Educational use:** dig into the code, modify it, and use it to teach or learn about neural networks, gpus, graphics programming, lua, colour theory, or whatever else floats your boat.
 - **Free (as in beer) for:**
 	- **Personal use:** look at pretty colours to your heart's content!
 	- **Evaluation:** seeing if it would be useful to you in a commercial context.

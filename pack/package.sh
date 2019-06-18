@@ -2,22 +2,21 @@
 
 #initial setup
 rm -rf dist
-rm deepsky.love
-rm deepsky-win.zip
-rm deepsky-osx.zip
+rm hallucinet.love
+rm hallucinet-win.zip
 
 #raw love2d file
 cd ..
-zip -r pack/deepsky.love *.lua src assets lib config
+zip -r pack/hallucinet.love *.lua src assets lib config readme.md
 cd pack
-
 
 #windows
 mkdir dist
-cat ./win/love.exe deepsky.love > dist/deepsky.exe
+cat ./win/love.exe hallucinet.love > dist/hallucinet.exe
 cp ./win/*.dll dist
 cp ./win/license.txt dist/license_love2d.txt
+cp ../readme.md dist/readme.md
 cd dist
-zip -r ../deepsky-win.zip .
+zip -r ../hallucinet-win.zip .
 cd ..
 rm -rf dist
