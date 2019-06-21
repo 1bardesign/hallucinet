@@ -13,7 +13,7 @@ local function new_textured_button(asset_or_text, w, h, callback, key)
 	return b
 end
 
-return function(w, h)
+return function(w, h, is_screensaver)
 
 	local hallucinet_ui = {}
 
@@ -748,7 +748,7 @@ return function(w, h)
 						"Renders a still image - useful to get a good quick idea of the overall \"look\" of a setup, but does not animate at all."
 					),
 				}),
-				ui.text:new(base_font, "Lower resolution will lead to faster renders at the expense of visual quality - this can be useful for quickly \"exploring\".", tutorial_width, "center"),
+				ui.text:new(base_font, "Lower resolution will lead to faster renders at the expense of visual quality.\nThis can be useful for quickly \"exploring\", or for folks with weaker GPUs.", tutorial_width, "center"),
 			}),
 
 			_tut_heading("Generation Options"),
@@ -811,15 +811,16 @@ return function(w, h)
 				),
 			}),
 			ui.row:new():add_children({
-				ui.text:new(base_font, "Still to Come", 100, "left"),
+				ui.text:new(base_font, "Possible Future Enhancements", 100, "left"),
 				ui.text:new(base_font,
 					table.concat({
 						"- Network Save/Load functionality",
-						"- Custom colour map modes (additive colour channels, gradient maps)",
+						"- Custom colour modes (additive colour channels, gradient maps)",
 						"- Partial Net/Input Modifications (for exploring \"similar\" parameters)",
 						"- Network Weight Editor",
-						"- Real supersampling (better quality with lower memory requirements)",
+						"- Real supersampling (better quality + lower memory requirements)",
 						"- Streaming frames to/from disk (longer animations possible)",
+						"- Camera controls (pan/zoom/animation)",
 						"- More Optimisation",
 					}, "\n"),
 					about_width - 100 - 30, "left"
@@ -859,7 +860,7 @@ return function(w, h)
 
 		for i,v in ipairs(frames) do
 			if just_estimate_size then
-				local bytes_per_pixel_estimate = 0.5; --post-compression
+				local bytes_per_pixel_estimate = 1.0; --post-compression pessimistic
 				local size_est = v:getWidth() * v:getHeight() * bytes_per_pixel_estimate;
 				size = size + size_est
 			else
@@ -897,7 +898,9 @@ return function(w, h)
 			ui.text:new(base_font, "Animations can eat a lot of disk space and take a long time to save. A single 1080p image will need 1-5 megabytes, with more detailed images being larger.\nEven the smallest static animation is 30 frames.\nYou've been warned!", save_txt_width, "center"),
 			ui.text:new(base_font, "Images are saved at their rendered resolution. When making wallpapers, be sure to go fullscreen before rendering for highest quality.", save_txt_width, "center"),
 			ui.text:new(base_font, "The files will end up wherever you ran hallucinet from, named for the date and time they were saved. Animation frames have a 5 digit numeric suffix.", save_txt_width, "center"),
-			ui.button:new("Save", save_width, 32, do_save),
+			ui.button:new("Save", save_width, 32, function(self)
+				do_save(false)
+			end),
 			ui.button:new("Estimate Size", save_width, 32, function(self)
 				local size = do_save(true)
 				self.ui_button_text:setf("Estimate: ~"..tostring(math.ceil(size/1e6)).."mb", self.w, "center")
@@ -920,6 +923,45 @@ return function(w, h)
 	--set up actual hallucinet
 	hallucinet_ui.hallucinet = hallucinet:new(generate_spec_base())
 	hallucinet_ui.hallucinet:init()
+
+	--screensaver mode
+
+	if is_screensaver then
+		--setup still mode
+		hallucinet_ui.hallucinet.mode = "static"
+		hallucinet_ui.hallucinet.static_fps = 1
+		hallucinet_ui.hallucinet.static_duration = 0.01
+		--skip intro
+		hallucinet_ui:start()
+		title_blend = 0
+		--go fullscreen
+		fs_button:onclick()
+		--hide ui
+		hallucinet_ui:toggle_hide()
+		--re-init
+		hallucinet_ui.hallucinet:init_storage()
+		--rebuild update
+		local old_update = hallucinet_ui.update
+		local cycle_time = 60 * 5 --every few minutes
+		local cycle_timer = 0
+		function hallucinet_ui:update(dt)
+			old_update(self, dt)
+			cycle_timer = cycle_timer + dt
+			if cycle_timer > cycle_time then
+				cycle_timer = cycle_timer - cycle_time
+				self:new_net()
+				self:new_input()
+			end
+		end
+		--respond to key/mouse by exiting
+		function hallucinet_ui:pointer()
+			love.event.quit()
+		end
+		function hallucinet_ui:key()
+			love.event.quit()
+		end
+		--todo: only flip once we're actually rendered
+	end
 
 	return hallucinet_ui
 

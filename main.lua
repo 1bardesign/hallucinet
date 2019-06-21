@@ -2,11 +2,18 @@
 local ui
 
 --startup
-function love.load()
-	local font = love.graphics.getFont()
+function love.load(args)
+	local is_screensaver = false
+	for i,v in ipairs(args) do
+		if v == "screensaver" then
+			is_screensaver = true
+		end
+	end
+
+	local w, h = love.graphics.getDimensions()
 
 	--build ui
-	ui = require("src.hallucinet_ui")(love.graphics.getDimensions())
+	ui = require("src.hallucinet_ui")(w, h, is_screensaver)
 end
 
 function love.resize(w, h)
