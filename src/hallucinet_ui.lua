@@ -797,7 +797,7 @@ return function(w, h, is_screensaver)
 				ui.text:new(base_font, "Inspiration", 100, "left"),
 				ui.text:new(base_font,
 					"Hallucinet was inspired by Tuan Le's work on generating still images with randomly initialised neural nets, "..
-					"the Electric Sheep project, the shadertoy community, and the wider demoscene.",
+					"the Electric Sheep project, the shadertoy community, several \"dailies\" artists, and the wider demoscene.",
 					about_width - 100 - 30, "left"
 				),
 			}),

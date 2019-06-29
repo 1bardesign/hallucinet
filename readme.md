@@ -1,10 +1,8 @@
 # Hallucinet
 
-**(Currently under construction)**
-
 Hallucinet is a visual toy utilising neural nets to generate pretty pictures and animations.
 
-Networks and inputs can be generated and modifed interactively, and random configurations can be explored.
+Networks and inputs can be generated independently, and random configurations can be explored.
 
 # Accessibility
 
@@ -14,23 +12,32 @@ Hallucinet can produce intense, flashing visuals. Photosensitive individuals ple
 
 **Everyone:**
 
-- Up to date graphics drivers.
-- GPU with at least 1GB of effective VRAM - running with less is possible but will severely limit the length of animation.
-	2GB and up is recommended, faster/newer GPUs will do a better job of the heavy workload.
+- Up to date graphics drivers, please!
+- GPU with at least 1GB of effective VRAM. Running with less is possible, but will severely limit the length of animations. 2GB and up is recommended.
+- Performance scales directly with GPU power, so a faster/newer GPU will result in nicer images, faster.
 
 **Windows:**
 
-- Only tested on Windows 10
 - Get the .zip version
 - Extract somewhere
 - Run the exe
+- Only tested on Windows 10
 
-**Linux/MacOS:**
+**Linux/MacOS/Windows LÖVE User:**
 
 - Get the .love Version
-- LÖVE 11+ Locally Installed
+- [LÖVE 11+](http://love2d.org/) Locally Installed
 - Run the .love file with LÖVE
-- YMMV
+
+# Usage
+
+There's a tutorial explaining all the available options inside the application.
+
+# Screensaver Mode
+
+Hallucinet contains a screensaver mode which runs full screen, generates a random still image every 5 minutes, and closes on any input.
+
+To run Hallucinet in screensaver mode, pass `screensaver` in as a command line argument. If you're having trouble with that, please let me know.
 
 # Feedback
 
